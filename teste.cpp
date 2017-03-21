@@ -8,65 +8,31 @@
 using namespace std; // no need to type 'std::'
 int cube_size;
 
+
 int checkLiveCells(string aux_cell, const set<string> &Cube){
   int liveCells = 0;
-  int x_aux, y_aux, z_aux;
-  int x,y,z;
+  int i, aux;
+  int cord_vector[3];
 
-  x = aux_cell[0]-'0';
-  y = aux_cell[1]-'0';
-  z = aux_cell[2]-'0';
+  for(int i=0;i<3;i++)
+    cord_vector[i] = aux_cell[i]-'0';
 
-  // (x-1, y, z)
-  x_aux = x-1;
-  if(x_aux==-1) x_aux=cube_size-1;
-  aux_cell[0] = '0' + x_aux;
-  if(Cube.count(aux_cell)==1){ // live cell in this position
-    liveCells++;
-  }
+  for(i=0;i<3;i++){
 
-  // (x+1, y, z)
-  x_aux = x+1;
-  if(x_aux==cube_size) x_aux=0;
-  aux_cell[0] = '0' + x_aux;
-  if(Cube.count(aux_cell)==1){ // live cell in this position
-    liveCells++;
-  }
+    aux = cord_vector[i]-1;
+    if(aux==-1) aux=cube_size-1;
+    aux_cell[i] = '0' + aux;
+    if(Cube.count(aux_cell)==1) // live cell in this position
+      liveCells++;
 
-  aux_cell[0] = '0' + x; //reset
+    aux = cord_vector[i]+1;
+    if(aux==cube_size) aux=0;
+    aux_cell[i] = '0' + aux;
+    if(Cube.count(aux_cell)==1) // live cell in this position
+      liveCells++;
 
-  // (x, y-1, z)
-  y_aux = y-1;
-  if(y_aux==-1) y_aux=cube_size-1;
-  aux_cell[1] = '0' + y_aux;
-  if(Cube.count(aux_cell)==1){ // live cell in this position
-    liveCells++;
-  }
+    aux_cell[i] = '0' + cord_vector[i];
 
-  // (x, y+1, z)
-  y_aux = y+1;
-  if(y_aux==cube_size) y_aux=0;
-  aux_cell[1] = '0' + y_aux;
-  if(Cube.count(aux_cell)==1){ // live cell in this position
-    liveCells++;
-  }
-
-  aux_cell[1] = '0' + y; // reset
-
-  // (x, y, z-1)
-  z_aux = z-1;
-  if(z_aux==-1) z_aux=cube_size-1;
-  aux_cell[2] = '0' + z_aux;
-  if(Cube.count(aux_cell)==1){ // live cell in this position
-    liveCells++;
-  }
-
-  // (x, y, z+1)
-  z_aux = z+1;
-  if(z_aux==cube_size) z_aux=0;
-  aux_cell[2] = '0' + z_aux;
-  if(Cube.count(aux_cell)==1){ // live cell in this position
-    liveCells++;
   }
 
   return liveCells;
@@ -84,23 +50,13 @@ vector<string> split(const string &text, char sep) {
   return tokens;
 }
 
-int main(int argc, char *argv[]){
 
-  if( argc != 3 ){ // 2 arguments needed
-    cout<<"usage: "<< argv[0] << " <filename> <number_gen>" << endl;
-    return -1;
-  }
+void readInputFile(string filename, set<string> &Cube){
 
-  // Read from file
   ifstream infile;
-  infile.open(argv[1]);
+  infile.open(filename);
   string line;
 
-  int number_gen;
-  stringstream ss;
-  ss << argv[2];
-  ss >> number_gen;
-  set<string> Cube;
   bool firstline = true;
 
   while (getline(infile, line))
@@ -119,19 +75,51 @@ int main(int argc, char *argv[]){
     }
   }
   infile.close();
+}
+
+
+// Program Output
+void printCube(const set<string> &Cube){
+  set<string>::iterator iter;
+  string aux_cell;
+
+  for(iter=Cube.begin(); iter!=Cube.end();++iter){
+    aux_cell = *iter;
+    cout << aux_cell[0] << " " << aux_cell[1] << " " << aux_cell[2] <<endl;
+  }
+  return;
+}
+
+int main(int argc, char *argv[]){
+
+  if( argc != 3 ){ // 2 arguments needed
+    cout<<"usage: "<< argv[0] << " <filename> <number_gen>" << endl;
+    return -1;
+  }
+
+  // Read from file
+  set<string> Cube;
+  int number_gen;
+  stringstream ss;
+  ss << argv[2];
+  ss >> number_gen;
+
+  readInputFile(argv[1], Cube);
 
   set<string>::iterator iter;
   set<string> newCube;
-  int aux_live_cells, x, x2, x_aux, y, y2, y_aux, z, z2, z_aux, aux;
+  int aux_live_cells, aux;
   string aux_cell;
 
   for(int i=0; i<number_gen; ++i){
     for(iter=Cube.begin(); iter!=Cube.end();++iter){
 
         aux_cell = *iter;
-        x = aux_cell[0]-'0';
-        y = aux_cell[1]-'0';
-        z = aux_cell[2]-'0';
+
+        int cord_vector[3];
+
+        for(int i=0;i<3;i++)
+          cord_vector[i] = aux_cell[i]-'0';
 
         aux_live_cells = checkLiveCells(aux_cell, Cube);
 
@@ -140,78 +128,33 @@ int main(int argc, char *argv[]){
 
         // check Neighbours
 
-        // (x-1, y, z)
-        x_aux = x-1;
-        if(x_aux==-1) x_aux=cube_size-1;
-        aux_cell[0] = '0' + x_aux;
-        if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-          aux_live_cells = checkLiveCells(aux_cell, Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-            newCube.insert(aux_cell);
-        }
+        for(int j = 0;j < 3;j++){
+          aux = cord_vector[j]-1;
+          if(aux==-1) aux=cube_size-1;
+          aux_cell[j] = '0' + aux;
+          if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
+            aux_live_cells = checkLiveCells(aux_cell, Cube);
+            if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
+              newCube.insert(aux_cell);
+          }
 
-        // (x+1, y, z)
-        x_aux = x+1;
-        if(x_aux==cube_size) x_aux=0;
-        aux_cell[0] = '0' + x_aux;
-        if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-          aux_live_cells = checkLiveCells(aux_cell, Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-            newCube.insert(aux_cell);
-        }
+          aux = cord_vector[j]+1;
+          if(aux==cube_size) aux=0;
+          aux_cell[j] = '0' + aux;
+          if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
+            aux_live_cells = checkLiveCells(aux_cell, Cube);
+            if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
+              newCube.insert(aux_cell);
+          }
 
-        aux_cell[0] = '0' + x; //reset
-
-        // (x, y-1, z)
-        y_aux = y-1;
-        if(y_aux==-1) y_aux=cube_size-1;
-        aux_cell[1] = '0' + y_aux;
-        if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-          aux_live_cells = checkLiveCells(aux_cell, Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-            newCube.insert(aux_cell);
-        }
-
-        // (x, y+1, z)
-        y_aux = y+1;
-        if(y_aux==cube_size) y_aux=0;
-        aux_cell[1] = '0' + y_aux;
-        if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-          aux_live_cells = checkLiveCells(aux_cell, Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-            newCube.insert(aux_cell);
-        }
-
-        aux_cell[1] = '0' + y; // reset
-
-        // (x, y, z-1)
-        z_aux = z-1;
-        if(z_aux==-1) z_aux=cube_size-1;
-        aux_cell[2] = '0' + z_aux;
-        if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-          aux_live_cells = checkLiveCells(aux_cell, Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-            newCube.insert(aux_cell);
-        }
-
-        // (x, y, z+1)
-        z_aux = z+1;
-        if(z_aux==cube_size) z_aux=0;
-        aux_cell[2] = '0' + z_aux;
-        if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-          aux_live_cells = checkLiveCells(aux_cell, Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-            newCube.insert(aux_cell);
+          aux_cell[j] = '0' + cord_vector[j];
         }
     }
     Cube = newCube;
     newCube.clear();
   }
 
-  for(iter=Cube.begin(); iter!=Cube.end();++iter){
-    aux_cell = *iter;
-    cout << aux_cell[0] << " " << aux_cell[1] << " " << aux_cell[2] <<endl;
-  }
+  printCube(Cube);
 
   return 0;
 }
