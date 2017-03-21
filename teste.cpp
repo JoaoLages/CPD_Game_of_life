@@ -6,6 +6,7 @@
 #include <set> // set
 
 using namespace std; // no need to type 'std::'
+int cube_size;
 
 int checkLiveCells(string aux_cell, const set<string> &Cube){
   int liveCells = 0;
@@ -18,6 +19,7 @@ int checkLiveCells(string aux_cell, const set<string> &Cube){
 
   // (x-1, y, z)
   x_aux = x-1;
+  if(x_aux==-1) x_aux=cube_size-1;
   aux_cell[0] = '0' + x_aux;
   if(Cube.count(aux_cell)==1){ // live cell in this position
     liveCells++;
@@ -25,6 +27,7 @@ int checkLiveCells(string aux_cell, const set<string> &Cube){
 
   // (x+1, y, z)
   x_aux = x+1;
+  if(x_aux==cube_size) x_aux=0;
   aux_cell[0] = '0' + x_aux;
   if(Cube.count(aux_cell)==1){ // live cell in this position
     liveCells++;
@@ -34,6 +37,7 @@ int checkLiveCells(string aux_cell, const set<string> &Cube){
 
   // (x, y-1, z)
   y_aux = y-1;
+  if(y_aux==-1) y_aux=cube_size-1;
   aux_cell[1] = '0' + y_aux;
   if(Cube.count(aux_cell)==1){ // live cell in this position
     liveCells++;
@@ -41,6 +45,7 @@ int checkLiveCells(string aux_cell, const set<string> &Cube){
 
   // (x, y+1, z)
   y_aux = y+1;
+  if(y_aux==cube_size) y_aux=0;
   aux_cell[1] = '0' + y_aux;
   if(Cube.count(aux_cell)==1){ // live cell in this position
     liveCells++;
@@ -50,6 +55,7 @@ int checkLiveCells(string aux_cell, const set<string> &Cube){
 
   // (x, y, z-1)
   z_aux = z-1;
+  if(z_aux==-1) z_aux=cube_size-1;
   aux_cell[2] = '0' + z_aux;
   if(Cube.count(aux_cell)==1){ // live cell in this position
     liveCells++;
@@ -57,6 +63,7 @@ int checkLiveCells(string aux_cell, const set<string> &Cube){
 
   // (x, y, z+1)
   z_aux = z+1;
+  if(z_aux==cube_size) z_aux=0;
   aux_cell[2] = '0' + z_aux;
   if(Cube.count(aux_cell)==1){ // live cell in this position
     liveCells++;
@@ -99,6 +106,8 @@ int main(int argc, char *argv[]){
   while (getline(infile, line))
   {
     if(firstline){
+    	ss << line;
+  		ss >> cube_size;
       firstline = false;
     }else{
       vector<string> tokens_str;
@@ -128,10 +137,11 @@ int main(int argc, char *argv[]){
         if(aux_live_cells>=2 and aux_live_cells<=4) // cell lives
           newCube.insert(aux_cell);
 
-        // check Dead Neighbours
+        // check Neighbours
 
         // (x-1, y, z)
         x_aux = x-1;
+        if(x_aux==-1) x_aux=cube_size-1;
         aux_cell[0] = '0' + x_aux;
         if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
           aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -141,6 +151,7 @@ int main(int argc, char *argv[]){
 
         // (x+1, y, z)
         x_aux = x+1;
+        if(x_aux==cube_size) x_aux=0;
         aux_cell[0] = '0' + x_aux;
         if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
           aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -152,6 +163,7 @@ int main(int argc, char *argv[]){
 
         // (x, y-1, z)
         y_aux = y-1;
+        if(y_aux==-1) y_aux=cube_size-1;
         aux_cell[1] = '0' + y_aux;
         if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
           aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -161,6 +173,7 @@ int main(int argc, char *argv[]){
 
         // (x, y+1, z)
         y_aux = y+1;
+        if(y_aux==cube_size) y_aux=0;
         aux_cell[1] = '0' + y_aux;
         if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
           aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -172,6 +185,7 @@ int main(int argc, char *argv[]){
 
         // (x, y, z-1)
         z_aux = z-1;
+        if(z_aux==-1) z_aux=cube_size-1;
         aux_cell[2] = '0' + z_aux;
         if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
           aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -181,6 +195,7 @@ int main(int argc, char *argv[]){
 
         // (x, y, z+1)
         z_aux = z+1;
+        if(z_aux==cube_size) z_aux=0;
         aux_cell[2] = '0' + z_aux;
         if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
           aux_live_cells = checkLiveCells(aux_cell, Cube);
