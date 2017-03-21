@@ -106,8 +106,9 @@ int main(int argc, char *argv[]){
   while (getline(infile, line))
   {
     if(firstline){
-    	ss << line;
-  		ss >> cube_size;
+      stringstream stream;
+    	stream << line;
+  		stream >> cube_size;
       firstline = false;
     }else{
       vector<string> tokens_str;
