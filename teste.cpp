@@ -4,13 +4,30 @@
 #include <sstream> // stringstream
 #include <fstream>  //files
 #include <set> // set
+#include <unordered_set> // unordered_set
 
 using namespace std; // no need to type 'std::'
-int cube_size;
+
 
 struct Cell{
   int coords[3];
 };
+
+namespace std
+{
+    template <> struct hash<Cell>
+    {
+        size_t operator()(Cell const & x) const noexcept
+        {
+            return (
+                ((199 + std::hash<int>()(x.coords[0])) * 199
+                + std::hash<int>()(x.coords[1]))* 199
+                + std::hash<int>()(x.coords[2])
+            );
+        }
+    };
+}
+int cube_size;
 
 // for ordering set
 inline bool operator<(const Cell& lhs, const Cell& rhs)
@@ -20,8 +37,14 @@ inline bool operator<(const Cell& lhs, const Cell& rhs)
   return lhs.coords[2] < rhs.coords[2];
 }
 
+inline bool operator==(const Cell& lhs, const Cell& rhs)
+{
+  if(lhs.coords[0] == rhs.coords[0] and lhs.coords[1] == rhs.coords[1] and lhs.coords[2] == rhs.coords[2]) return true;
+  return false;
+}
+
 // Count live cells around a cell
-int checkLiveCells(Cell aux_cell, const set<Cell> &Cube){
+int checkLiveCells(Cell aux_cell, const unordered_set<Cell> &Cube){
   int liveCells = 0;
   int i, aux;
   int cord_vector[3];
@@ -63,7 +86,7 @@ vector<string> split(const string &text, char sep) {
 }
 
 
-void readInputFile(string filename, set<Cell> &Cube){
+void readInputFile(string filename, unordered_set<Cell> &Cube){
 
   ifstream infile;
   infile.open(filename);
@@ -92,11 +115,11 @@ void readInputFile(string filename, set<Cell> &Cube){
 
 
 // Program Output
-void printCube(const set<Cell> &Cube){
-  set<Cell>::iterator iter;
+void printCube(const unordered_set<Cell> &Cube){
   Cell aux_cell;
+  set<Cell> orderedCube(Cube.begin(), Cube.end());
 
-  for(iter=Cube.begin(); iter!=Cube.end();++iter){
+  for(auto iter=orderedCube.begin(); iter!=orderedCube.end();++iter){
     aux_cell = *iter;
     cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
   }
@@ -111,7 +134,7 @@ int main(int argc, char *argv[]){
   }
 
   // Read from file
-  set<Cell> Cube;
+  unordered_set<Cell> Cube;
   int number_gen;
   stringstream ss;
   ss << argv[2];
@@ -119,13 +142,12 @@ int main(int argc, char *argv[]){
 
   readInputFile(argv[1], Cube);
 
-  set<Cell>::iterator iter;
-  set<Cell> newCube;
+  unordered_set<Cell> newCube;
   int aux_live_cells, aux;
   Cell aux_cell;
 
   for(int i=0; i<number_gen; ++i){
-    for(iter=Cube.begin(); iter!=Cube.end();++iter){
+    for(auto iter=Cube.begin(); iter!=Cube.end();++iter){
 
         aux_cell = *iter;
 
