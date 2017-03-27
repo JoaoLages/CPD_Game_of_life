@@ -5,6 +5,7 @@
 #include <fstream>  //files
 #include <set> // set
 #include <unordered_set> // unordered_set
+#include <omp.h>
 
 using namespace std; // no need to type 'std::'
 
@@ -128,6 +129,8 @@ void printCube(const unordered_set<Cell> &Cube){
 
 int main(int argc, char *argv[]){
 
+  float start = omp_get_wtime();
+
   if( argc != 3 ){ // 2 arguments needed
     cout<<"usage: "<< argv[0] << " <filename> <number_gen>" << endl;
     return -1;
@@ -191,5 +194,8 @@ int main(int argc, char *argv[]){
 
   printCube(Cube);
 
+  float end = omp_get_wtime();
+
+  cout << end-start << endl;
   return 0;
 }
