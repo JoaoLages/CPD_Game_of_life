@@ -146,12 +146,11 @@ int main(int argc, char *argv[]){
   readInputFile(argv[1], Cube);
 
   unordered_set<Cell> newCube;
-  unordered_set<Cell>::iterator iter;
   int aux_live_cells, aux, iter_int;
   Cell aux_cell;
 
   for(int p=0; p<number_gen; ++p){
-    #pragma omp parallel for private(aux_cell)
+    #pragma omp parallel for private(aux_cell, iter_int, aux_live_cells)
     for(iter_int = 0; iter_int < Cube.size(); iter_int++) {
         auto iter = Cube.begin();
         advance(iter, iter_int);
@@ -165,29 +164,32 @@ int main(int argc, char *argv[]){
 
         aux_live_cells = checkLiveCells(aux_cell, Cube);
 
-        if(aux_live_cells>=2 and aux_live_cells<=4) // cell lives
+        #pragma omp critical (a)
+      {  if(aux_live_cells>=2 and aux_live_cells<=4) // cell lives
           newCube.insert(aux_cell);
-
+}
         // check Neighbours
 
         for(int j = 0;j < 3;j++){
           aux = cord_vector[j]-1;
           if(aux==-1) aux=cube_size-1;
           aux_cell.coords[j] = aux;
-          if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
+          #pragma omp critical (a)
+          {if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
             aux_live_cells = checkLiveCells(aux_cell, Cube);
             if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
               newCube.insert(aux_cell);
-          }
+          }}
 
           aux = cord_vector[j]+1;
           if(aux==cube_size) aux=0;
           aux_cell.coords[j] = aux;
-          if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
+          #pragma omp critical (a)
+          {if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
             aux_live_cells = checkLiveCells(aux_cell, Cube);
             if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
               newCube.insert(aux_cell);
-          }
+          }}
 
           aux_cell.coords[j] = cord_vector[j];
         }
