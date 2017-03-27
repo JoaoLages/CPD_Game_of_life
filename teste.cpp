@@ -146,11 +146,15 @@ int main(int argc, char *argv[]){
   readInputFile(argv[1], Cube);
 
   unordered_set<Cell> newCube;
-  int aux_live_cells, aux;
+  unordered_set<Cell>::iterator iter;
+  int aux_live_cells, aux, iter_int;
   Cell aux_cell;
 
-  for(int i=0; i<number_gen; ++i){
-    for(auto iter=Cube.begin(); iter!=Cube.end();++iter){
+  for(int p=0; p<number_gen; ++p){
+    #pragma omp parallel for private(aux_cell)
+    for(iter_int = 0; iter_int < Cube.size(); iter_int++) {
+        auto iter = Cube.begin();
+        advance(iter, iter_int);
 
         aux_cell = *iter;
 
