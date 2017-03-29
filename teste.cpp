@@ -146,70 +146,79 @@ int main(int argc, char *argv[]){
   readInputFile(argv[1], Cube);
 
   unordered_set<Cell> newCube;
-  unordered_set<Cell>::iterator iter_Cube;
-  int aux_live_cells, aux;
-  vector<const Cell*> elements; //my_element is whatever is in list
 
   for(int p=0; p<number_gen; ++p){
-  //#pragma parallel
-  {
-    iter_Cube = Cube.begin();
-    //#pragma omp single
+    #pragma omp parallel
     {
-    for(int a=0; a<Cube.size(); ++a)
-    {
-      Cell aux_cell = *iter_Cube;
-
-      //#pragma omp task private (aux_cell, aux_live_cells)
+      #pragma omp single
       {
-        unordered_set<Cell> liveCells;
-
-        int cord_vector[3];
-
-        for(int i=0;i<3;i++)
-          cord_vector[i] = aux_cell.coords[i];
-
-        aux_live_cells = checkLiveCells(aux_cell, Cube);
-
-        if(aux_live_cells>=2 and aux_live_cells<=4) // cell lives
-          liveCells.insert(aux_cell);
-
-        // check Neighbours
-
-        for(int j = 0;j < 3;j++){
-          aux = cord_vector[j]-1;
-          if(aux==-1) aux=cube_size-1;
-          aux_cell.coords[j] = aux;
-          if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-            aux_live_cells = checkLiveCells(aux_cell, Cube);
-            if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-              liveCells.insert(aux_cell);
-          }
-
-          aux = cord_vector[j]+1;
-          if(aux==cube_size) aux=0;
-          aux_cell.coords[j] = aux;
-          if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
-            aux_live_cells = checkLiveCells(aux_cell, Cube);
-            if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
-              liveCells.insert(aux_cell);
-          }
-
-          aux_cell.coords[j] = cord_vector[j];
-        }
-
-      //#pragma omp critical
+      for(const auto& iter: Cube)
+      {
+        Cell aux_cell = iter;
+      //  cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
+        #pragma omp task firstprivate(aux_cell, Cube)
         {
-          for(auto it=liveCells.begin(); it!= liveCells.end(); ++it){
-            Cell aux = *it;
-            newCube.insert(aux);
+          #pragma critical (p)
+          {
+          //  cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
+          }
+          int aux_live_cells, aux;
+          unordered_set<Cell> liveCells;
+
+          int cord_vector[3];
+
+          for(int i=0;i<3;i++)
+            cord_vector[i] = aux_cell.coords[i];
+
+          aux_live_cells = checkLiveCells(aux_cell, Cube);
+
+          if(aux_live_cells>=2 and aux_live_cells<=4) // cell lives
+            liveCells.insert(aux_cell);
+
+          // check Neighbours
+
+          for(int j = 0;j < 3;j++){
+            aux = cord_vector[j]-1;
+            if(aux==-1) aux=cube_size-1;
+            aux_cell.coords[j] = aux;
+            #pragma omp critical
+            {
+            if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
+              aux_live_cells = checkLiveCells(aux_cell, Cube);
+              if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
+                liveCells.insert(aux_cell);
+            }
+            }
+
+            aux = cord_vector[j]+1;
+            if(aux==cube_size) aux=0;
+            aux_cell.coords[j] = aux;
+            #pragma omp critical
+            {
+            if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
+              aux_live_cells = checkLiveCells(aux_cell, Cube);
+              if(aux_live_cells>=2 and aux_live_cells<=3) // cell lives
+                liveCells.insert(aux_cell);
+            }
+          }
+
+            aux_cell.coords[j] = cord_vector[j];
+          }
+
+          #pragma omp critical
+          {
+            for(auto it=liveCells.begin(); it!= liveCells.end(); ++it){
+              Cell aux = *it;
+              newCube.insert(aux);
+            }
           }
         }
-}
-    advance(iter_Cube, 1);
-    }}}
-    Cube = newCube;
-    newCube.clear();
+      }
+
+      Cube = newCube;
+      newCube.clear();
+      }
+    }
   }
 
   printCube(Cube);
