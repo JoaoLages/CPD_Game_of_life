@@ -148,7 +148,7 @@ int main(int argc, char *argv[]){
   unordered_set<Cell> newCube;
 
   for(int p=0; p<number_gen; ++p){
-    #pragma omp parallel
+    #pragma omp parallel shared(Cube, newCube)
     {
       #pragma omp single
       {
@@ -156,12 +156,12 @@ int main(int argc, char *argv[]){
       {
         Cell aux_cell = iter;
       //  cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
-        #pragma omp task firstprivate(aux_cell, Cube)
+        #pragma omp task firstprivate(aux_cell) shared(Cube, newCube)
         {
-          #pragma critical (p)
+        //  #pragma omp critical
           {
-          //  cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
-          }
+        //    cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
+
           int aux_live_cells, aux;
           unordered_set<Cell> liveCells;
 
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]){
             aux = cord_vector[j]-1;
             if(aux==-1) aux=cube_size-1;
             aux_cell.coords[j] = aux;
-            #pragma omp critical
+            // #pragma omp critical
             {
             if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
               aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]){
             aux = cord_vector[j]+1;
             if(aux==cube_size) aux=0;
             aux_cell.coords[j] = aux;
-            #pragma omp critical
+          //  #pragma omp critical
             {
             if(Cube.count(aux_cell)==0 and newCube.count(aux_cell)==0){ // death cell in this position and not inserted
               aux_live_cells = checkLiveCells(aux_cell, Cube);
@@ -212,9 +212,9 @@ int main(int argc, char *argv[]){
               newCube.insert(aux);
             }
           }
-        }
+        }}
       }
-
+      #pragma omp taskwait
       Cube = newCube;
       newCube.clear();
       }
