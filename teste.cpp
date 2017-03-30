@@ -156,7 +156,7 @@ int main(int argc, char *argv[]){
       {
         Cell aux_cell = iter;
       //  cout << aux_cell.coords[0] << " " << aux_cell.coords[1] << " " << aux_cell.coords[2] <<endl;
-        #pragma omp task firstprivate(aux_cell) shared(Cube, newCube)
+        #pragma omp task firstprivate(aux_cell)
         {
         //  #pragma omp critical
           {
@@ -205,10 +205,11 @@ int main(int argc, char *argv[]){
             aux_cell.coords[j] = cord_vector[j];
           }
 
-          #pragma omp critical
+          //#pragma omp critical
           {
             for(auto it=liveCells.begin(); it!= liveCells.end(); ++it){
               Cell aux = *it;
+              #pragma omp critical
               newCube.insert(aux);
             }
           }
