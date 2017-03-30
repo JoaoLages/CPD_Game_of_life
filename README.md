@@ -1,4 +1,5 @@
 # CPD_Game_of_life
 
-Compilar teste:
-g++ teste.cpp -fopenmp -std=c++11 -g -o teste
+Compilar:
+g++ for_version.cpp -fopenmp -std=c++11 -g -o for_cpd
+g++ task_version.cpp -fopenmp -std=c++11 -g -o task_cpd
