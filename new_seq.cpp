@@ -115,12 +115,7 @@ vector<vector<Node*>> readInputFile(string filename){
   		stream >> cube_size;
       Cube.resize(cube_size);
       for (auto &a: Cube) a.resize(cube_size);
-      // Initialize Cube
-      for(int a=0; a<cube_size; ++a){
-        for(int b=0; b<cube_size; ++b){
-          Cube[a][b] = NULL;
-        }
-      }
+
       firstline = false;
     }else{
       vector<string> tokens_str;
@@ -213,17 +208,14 @@ int main(int argc, char *argv[]){
   ss >> number_gen;
 
   vector<vector<Node*>> Cube = readInputFile(argv[1]);
-  vector<vector<Node*>> newCube;
-  newCube.resize(cube_size);
-  for (auto &a: newCube) a.resize(cube_size);
+
 
   for(int p=0; p<number_gen; ++p){
     // Reset newCube
-    for(int a=0; a<cube_size; ++a){
-      for(int b=0; b<cube_size; ++b){
-        newCube[a][b] = NULL;
-      }
-    }
+    vector<vector<Node*>> newCube;
+    newCube.resize(cube_size);
+    for (auto &a: newCube) a.resize(cube_size);
+    
     for(int a=0; a<cube_size; ++a){
       for(int b=0; b<cube_size; ++b){
 
