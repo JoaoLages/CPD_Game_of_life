@@ -100,12 +100,12 @@ vector<string> split(const string &text, char sep) {
 }
 
 
-vector<vector<Node*>> readInputFile(string filename){
+vector<vector<int>> readInputFile(string filename){
 
   ifstream infile;
   infile.open(filename);
   string line;
-  vector<vector<Node*>> Cube;
+  vector<vector<int>> Cube;  // lists of y,z (ex: Cube[0]= [y,z,y,z,y,z])
 
   bool firstline = true;
 
@@ -116,14 +116,14 @@ vector<vector<Node*>> readInputFile(string filename){
     	stream << line;
   		stream >> cube_size;
       Cube.resize(cube_size);
-      for (auto &a: Cube) a.resize(cube_size);
 
       firstline = false;
     }else{
       vector<string> tokens_str;
       tokens_str = split(line, ' '); // get x,y,z
       int z = atoi(tokens_str[2].c_str());
-      Insert(&Cube[atoi(tokens_str[0].c_str())][atoi(tokens_str[1].c_str())], z);
+      Cube[atoi(tokens_str[0].c_str())].push_back(atoi(tokens_str[1].c_str())); //insert y
+      Cube[atoi(tokens_str[0].c_str())].push_back(atoi(tokens_str[2].c_str())); //insert z
     }
   }
   infile.close();
@@ -194,6 +194,28 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
     if(p->right) inorder(p->right, a, b, Cube, newCube);
     else return;
 }
+
+/*My_x is the value of x that the process starts with*/
+ vector<vector<Node*>> cube_dismember(vector<vector<int>> Cube){
+
+   vector<vector<Node*>> Cubinho;
+
+   Cubinho.resize(cube_size);
+
+   for(int k=0;k<cube_size;++k)
+      Cubinho[k].resize(cube_size);
+
+   for(int i=0;i<Cube.size();++i){
+      for(int j=0;j<Cube[i].size();++j){
+
+          if(j%2==0){
+            Insert(&Cubinho[i][Cube[i][j]], Cube[i][j+1]);
+          }
+      }
+   }
+   return Cubinho;
+ }
+
 int main(int argc, char *argv[]){
 
   MPI_Status status;
@@ -205,34 +227,56 @@ int main(int argc, char *argv[]){
   }
 
   //MPI vars
-  int echovar;
+  vector<vector<int>> Cube;
+
   int me, nprocs;
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &me);
-  cout <<"Hi from node " << me << " of " << nprocs << endl;
+
+  // Read from file
+  int number_gen;
+  stringstream ss;
+  ss << argv[2];
+  ss >> number_gen;
 
   if(me == 0){
-    // Read from file
-    int number_gen;
-    stringstream ss;
-    ss << argv[2];
-    ss >> number_gen;
 
-    vector<vector<Node*>> Cube = readInputFile(argv[1]);
+    Cube = readInputFile(argv[1]);
 
-    vector<int> vector_int;
+    vector<int> vector_int; //n_linhas to send to slave
     vector_int.resize(nprocs);
 
     for(int i = 0; i <nprocs;i++)
       vector_int[i] = cube_size/nprocs;
 
-
     if(cube_size%nprocs != 0){
       for(int i=0; i< cube_size%nprocs; i++)
         vector_int[i]++;
     }
+    int aux_n_linha = 0; //linha a mandar
+    // sends to all slaves
+
+    for(int c=0; c<vector_int.size(); c++){
+      vector<int> infos;
+      infos.resize(3);
+
+      infos[0]=cube_size;
+      infos[1]=vector_int[c];
+      infos[2]=aux_n_linha;
+
+      MPI_Send(&infos.front(), infos.size(), MPI_INT, c, TAG, MPI_COMM_WORLD); // send infos to slave
+
+      for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
+        int aux = Cube[aux_n_linha].size();
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&Cube[aux_n_linha].front(), Cube[aux_n_linha].size(), MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
+        aux_n_linha++;
+      }
+    }
+
+    vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
     for(int p=0; p<number_gen; ++p){
       // Reset newCube
@@ -241,23 +285,34 @@ int main(int argc, char *argv[]){
       for (auto &a: newCube) a.resize(cube_size);
         for(int a=0; a<cube_size; ++a){
           for(int b=0; b<cube_size; ++b){
-            Node* z_tree = (Cube[a][b]);
-            if (z_tree != NULL) inorder(z_tree, a, b, Cube, newCube); //Iterate in binary tree
+            Node* z_tree = (Cubinho[a][b]);
+            if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
         }
       }
-      Cube = newCube;
-      for(int i=1; i<nprocs;i++){
-        MPI_Send(&echovar, 1,MPI_INT, i, TAG,MPI_COMM_WORLD);
-        MPI_Recv(&echovar, 1,MPI_INT, i, TAG,MPI_COMM_WORLD, &status);
-        cout <<"Hi from node " << me << " message to node "<< i <<" sent and recv "<< endl;
-      }
+      Cubinho = newCube;
+
     }
-    printCube(Cube);
+    printCube(Cubinho);
   }else{
     for(int p=0;p<number_gen; ++p){
-      MPI_Recv(&echovar, 1,MPI_INT, 0, TAG,MPI_COMM_WORLD, &status);
-      MPI_Send(&echovar, 1,MPI_INT, 0, TAG,MPI_COMM_WORLD);
-      cout <<"Hi from node " << me << " message from node 0 recv and sent "<< endl;
+
+      vector<int> infos;
+      infos.resize(3);
+
+      MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+
+      Cube.resize(infos[1]); //infos vai ter cube_size, n_lines e my_x por esta ordem
+
+      cube_size=infos[0];
+
+      int aux_ldim; // dimension of the line
+      for(int i=0; i<infos[1]; i++){
+        MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+        Cube[i].resize(aux_ldim); // redimension line
+        MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      }
+
+      vector<vector<Node*>> Cubinho = cube_dismember(Cube);
     }
 
   }
