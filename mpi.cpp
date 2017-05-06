@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <mpi.h>
 
+#define TAG 123
+
 using namespace std; // no need to type 'std::'
 
 struct Node {
@@ -194,6 +196,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
 }
 int main(int argc, char *argv[]){
 
+  MPI_Status status;
   //float start = omp_get_wtime();
 
   if( argc != 3 ){ // 2 arguments needed
@@ -201,39 +204,63 @@ int main(int argc, char *argv[]){
     return -1;
   }
 
+  //MPI vars
+  int echovar;
   int me, nprocs;
+
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &me);
-  printf("Hi from node %d of %d\n", me, nprocs);
+  cout <<"Hi from node " << me << " of " << nprocs << endl;
 
-  // Read from file
-  int number_gen;
-  stringstream ss;
-  ss << argv[2];
-  ss >> number_gen;
+  if(me == 0){
+    // Read from file
+    int number_gen;
+    stringstream ss;
+    ss << argv[2];
+    ss >> number_gen;
 
-  vector<vector<Node*>> Cube = readInputFile(argv[1]);
+    vector<vector<Node*>> Cube = readInputFile(argv[1]);
+
+    vector<int> vector_int;
+    vector_int.resize(nprocs);
+
+    for(int i = 0; i <nprocs;i++)
+      vector_int[i] = cube_size/nprocs;
 
 
-  for(int p=0; p<number_gen; ++p){
-    // Reset newCube
-    vector<vector<Node*>> newCube;
-    newCube.resize(cube_size);
-    for (auto &a: newCube) a.resize(cube_size);
+    if(cube_size%nprocs != 0){
+      for(int i=0; i< cube_size%nprocs; i++)
+        vector_int[i]++;
+    }
 
-    for(int a=0; a<cube_size; ++a){
-      for(int b=0; b<cube_size; ++b){
-
-        Node* z_tree = (Cube[a][b]);
-        if (z_tree != NULL) inorder(z_tree, a, b, Cube, newCube); //Iterate in binary tree
-
+    for(int p=0; p<number_gen; ++p){
+      // Reset newCube
+      vector<vector<Node*>> newCube;
+      newCube.resize(cube_size);
+      for (auto &a: newCube) a.resize(cube_size);
+        for(int a=0; a<cube_size; ++a){
+          for(int b=0; b<cube_size; ++b){
+            Node* z_tree = (Cube[a][b]);
+            if (z_tree != NULL) inorder(z_tree, a, b, Cube, newCube); //Iterate in binary tree
+        }
+      }
+      Cube = newCube;
+      for(int i=1; i<nprocs;i++){
+        MPI_Send(&echovar, 1,MPI_INT, i, TAG,MPI_COMM_WORLD);
+        MPI_Recv(&echovar, 1,MPI_INT, i, TAG,MPI_COMM_WORLD, &status);
+        cout <<"Hi from node " << me << " message to node "<< i <<" sent and recv "<< endl;
       }
     }
-    Cube = newCube;
-  }
-  printCube(Cube);
+    printCube(Cube);
+  }else{
+    for(int p=0;p<number_gen; ++p){
+      MPI_Recv(&echovar, 1,MPI_INT, 0, TAG,MPI_COMM_WORLD, &status);
+      MPI_Send(&echovar, 1,MPI_INT, 0, TAG,MPI_COMM_WORLD);
+      cout <<"Hi from node " << me << " message from node 0 recv and sent "<< endl;
+    }
 
+  }
   //float end = omp_get_wtime();
   //cout << end-start << endl;
 
