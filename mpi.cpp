@@ -196,6 +196,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
 }
 
 /*My_x is the value of x that the process starts with*/
+// Transform Cube vector<vector<int>> to vector<vector<Node*>>
  vector<vector<Node*>> cube_dismember(vector<vector<int>> Cube){
 
    vector<vector<Node*>> Cubinho;
@@ -267,13 +268,33 @@ int main(int argc, char *argv[]){
       infos[2]=aux_n_linha;
 
       MPI_Send(&infos.front(), infos.size(), MPI_INT, c, TAG, MPI_COMM_WORLD); // send infos to slave
-
+      // Send firstline
+      if(c == 0){
+        int aux = Cube.back().size();
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&Cube.back().front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
+      }else{
+        int aux = Cube[aux_n_linha].size();
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
+      }
       for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
         int aux = Cube[aux_n_linha].size();
         MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
-        MPI_Send(&Cube[aux_n_linha].front(), Cube[aux_n_linha].size(), MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
+        MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
         aux_n_linha++;
       }
+      // Send last line
+      if(c == (vector_int.size()-1)){
+        int aux = Cube[0].size();
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&Cube[0].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
+      }else{
+        int aux = Cube[aux_n_linha].size();
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
+      }
+
     }
 
     vector<vector<Node*>> Cubinho = cube_dismember(Cube);
@@ -283,37 +304,43 @@ int main(int argc, char *argv[]){
       vector<vector<Node*>> newCube;
       newCube.resize(cube_size);
       for (auto &a: newCube) a.resize(cube_size);
-        for(int a=0; a<cube_size; ++a){
-          for(int b=0; b<cube_size; ++b){
-            Node* z_tree = (Cubinho[a][b]);
-            if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
-        }
+      // Correr Cubo TODO: A passar para os slaves
+      for(int a=0; a<cube_size; ++a){
+        for(int b=0; b<cube_size; ++b){
+          Node* z_tree = (Cubinho[a][b]);
+          if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
+      }
       }
       Cubinho = newCube;
 
     }
     printCube(Cubinho);
-  }else{
-    for(int p=0;p<number_gen; ++p){
+  }else{ // Slave code
+    vector<int> infos;
+    infos.resize(3);
+    MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
 
-      vector<int> infos;
-      infos.resize(3);
+    Cube.resize(infos[1]+2); //infos vai ter cube_size, n_lines e my_x por esta ordem
 
-      MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+    cube_size=infos[0];
 
-      Cube.resize(infos[1]); //infos vai ter cube_size, n_lines e my_x por esta ordem
+    int aux_ldim; // dimension of the line
+    for(int i=0; i<(infos[1]+2); i++){
+      MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      Cube[i].resize(aux_ldim); // redimension line
+      MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+    }
 
-      cube_size=infos[0];
+    vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
-      int aux_ldim; // dimension of the line
-      for(int i=0; i<infos[1]; i++){
-        MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-        Cube[i].resize(aux_ldim); // redimension line
-        MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      // correr para cada cubo
+      for(int p=0;p<number_gen; ++p){
+        //TODO: pegar no codigo do master e meter aqui (correr entre 1 e size-1 para n ver a primeira e ultima linha)
+
+        // TODO: comunicar com o processo seguinte e anterior para trocar linhas 
       }
 
-      vector<vector<Node*>> Cubinho = cube_dismember(Cube);
-    }
+
 
   }
   //float end = omp_get_wtime();
