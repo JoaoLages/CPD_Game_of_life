@@ -297,6 +297,8 @@ int main(int argc, char *argv[]){
 
     }
 
+    // TODO: ESTE CODIGO ABAIXO É PARA APAGAR E APENAS RECEBER O FINAL DOS SLAVES
+
     vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
     for(int p=0; p<number_gen; ++p){
@@ -304,12 +306,12 @@ int main(int argc, char *argv[]){
       vector<vector<Node*>> newCube;
       newCube.resize(cube_size);
       for (auto &a: newCube) a.resize(cube_size);
-      // Correr Cubo TODO: A passar para os slaves
+
       for(int a=0; a<cube_size; ++a){
         for(int b=0; b<cube_size; ++b){
           Node* z_tree = (Cubinho[a][b]);
           if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
-      }
+        }
       }
       Cubinho = newCube;
 
@@ -335,9 +337,19 @@ int main(int argc, char *argv[]){
 
       // correr para cada cubo
       for(int p=0;p<number_gen; ++p){
-        //TODO: pegar no codigo do master e meter aqui (correr entre 1 e size-1 para n ver a primeira e ultima linha)
-
-        // TODO: comunicar com o processo seguinte e anterior para trocar linhas 
+        // Reset newCube
+        vector<vector<Node*>> newCube;
+        newCube.resize(cube_size);
+        for (auto &a: newCube) a.resize(cube_size);
+        // Correr Cubinho entre 1 e size-1
+        for(int a=1; a<(cube_size-1); ++a){
+          for(int b=0; b<cube_size; ++b){
+            Node* z_tree = (Cubinho[a][b]);
+            if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
+          }
+        }
+        Cubinho = newCube;
+        // TODO: comunicar com o processo seguinte e anterior para trocar primeira e ultimas linhas
       }
 
 
