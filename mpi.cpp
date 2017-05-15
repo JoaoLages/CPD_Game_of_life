@@ -304,18 +304,18 @@ int main(int argc, char *argv[]){
       vector_int[i]++;
     }
     int aux_n_linha = 0; //linha a mandar
-    // sends to all slaves
+    // sends to all slaves ????
 
     for(int c=0; c<vector_int.size(); c++){
       vector<int> infos;
       infos.resize(3);
 
       infos[0]=cube_size;
-      infos[1]=vector_int[c];
+      infos[1]=vector_int[c]; //number of lines to send to slave process
       infos[2]=aux_n_linha;
 
       MPI_Send(&infos.front(), infos.size(), MPI_INT, c, TAG, MPI_COMM_WORLD); // send infos to slave
-      // Send firstline
+      // Send firstline of line group
       if(c == 0){
         int aux = Cube.back().size();
         MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
@@ -331,7 +331,7 @@ int main(int argc, char *argv[]){
         MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
         aux_n_linha++;
       }
-      // Send last line
+      // Send last line of line group
       if(c == (vector_int.size()-1)){
         int aux = Cube[0].size();
         MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
@@ -361,9 +361,6 @@ int main(int argc, char *argv[]){
 
     vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
-    // correr para cada cubo
-    MPI_Request requests[2];
-    MPI_Status statuses[2];
 
     for(int p=0;p<number_gen; ++p){
       // Reset toSendCube
@@ -376,7 +373,8 @@ int main(int argc, char *argv[]){
         {toSendCube.resize(2);
           receivedCube.resize(2);}
 
-          // Reset newCube
+          // Reset newCube ???? MANEL pq se faz isto todas as gerações?
+          // pq nao penas 1 vez de depois so se fazer resize
           vector<vector<Node*>> newCube;
           newCube.resize(cube_size);
           for (auto &a: newCube) a.resize(cube_size);
@@ -406,14 +404,26 @@ int main(int argc, char *argv[]){
                 slave_n = me + 1;
                 if(slave_n == nprocs) slave_n = 1;
               }
-              int aux = toSendCube[c].size();
-              MPI_Send(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD); // send dimension of line
-              cout <<aux<<", "<<me<<endl;
-              MPI_Send(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD); // send line
-              cout <<p<<", "<<me<<endl;
 
-              MPI_Recv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &status); // receive dimension
-              MPI_Recv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &status); // receive line
+              // correr para cada cubo
+
+
+              MPI_Request requests[2];
+              MPI_Status statuses[2];
+
+              int aux = toSendCube[c].size();
+
+              MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
+              MPI_Isend(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
+              cout <<"first arg: "<< aux<<", Process: "<< me <<endl;
+
+              MPI_Waitall(2,requests, statuses);
+
+              MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
+              MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // send line
+              cout << "second arg: "<<p<<", Process: "<< me <<endl;
+
+              MPI_Waitall(2,requests, statuses);
             }
           }
 
