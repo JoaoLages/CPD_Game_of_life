@@ -408,22 +408,22 @@ int main(int argc, char *argv[]){
               // correr para cada cubo
 
 
-              MPI_Request requests[2];
+              MPI_Request requests[4];
               MPI_Status statuses[2];
 
               int aux = toSendCube[c].size();
 
-              MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
-              MPI_Isend(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
+              MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // receive dimension
+              MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
+
+              MPI_Isend(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[2]); // send dimension of line
               cout <<"first arg: "<< aux<<", Process: "<< me <<endl;
 
-              MPI_Waitall(2,requests, statuses);
-
-              MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
-              MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // send line
+              MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[3]); // send line
               cout << "second arg: "<<p<<", Process: "<< me <<endl;
 
-              MPI_Waitall(2,requests, statuses);
+              MPI_Waitall(4,requests, statuses);
+              cout << "hello" << endl;
             }
           }
 
