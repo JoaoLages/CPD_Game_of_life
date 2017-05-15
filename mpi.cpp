@@ -13,48 +13,46 @@
 using namespace std; // no need to type 'std::'
 
 struct Node {
-    int z;
-    Node* left;
-    Node* right;
+  int z;
+  Node* left;
+  Node* right;
 
-    Node(int val) {
-        this->z = val;
-        this->left = NULL;
-        this->right = NULL;
-    }
+  Node(int val) {
+    this->z = val;
+    this->left = NULL;
+    this->right = NULL;
+  }
 
-    Node(){
-      this->z = -1;
-      this->left = NULL;
-      this->right = NULL;
-    }
+  Node(){
+    this->z = -1;
+    this->left = NULL;
+    this->right = NULL;
+  }
 };
 
 int cube_size; // glocal variable
 
 bool Find( Node** node, int value )
 {
-    if( (*node) == NULL)
-        return false;
-    if( (*node)->z == value )
-        return true;
-    if( (*node)->z > value )
-        return Find( &((*node)->left), value );
-    else
-        return Find( &((*node)->right), value );
+  if( (*node) == NULL) return false;
+  if( (*node)->z == value )return true;
+  if( (*node)->z > value )
+    return Find( &((*node)->left), value );
+  else
+    return Find( &((*node)->right), value );
 }
 
 void Insert( Node** node, int value )
 {
-    if( *node == NULL ) {
-        *node = new Node( value );
-        return;
-    }
-    if( ((*node)->z) == value ) return; // dont allow equal values
-    if( ((*node)->z) > value )
-        Insert( &((*node)->left), value );
-    else
-        Insert( &((*node)->right), value );
+  if( *node == NULL ) {
+    *node = new Node( value );
+    return;
+  }
+  if( ((*node)->z) == value ) return; // dont allow equal values
+  if( ((*node)->z) > value )
+  Insert( &((*node)->left), value );
+  else
+  Insert( &((*node)->right), value );
 }
 
 
@@ -74,13 +72,13 @@ int checkLiveCells(int x, int y, int z, vector<vector<Node*>> &Cube){
     if(aux==-1) aux=cube_size-1;
     aux_cord_vector[i] = aux;
     if(Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])) // live cell in this position (0/-1)
-      liveCells++;
+    liveCells++;
 
     aux = cord_vector[i]+1;
     if(aux==cube_size) aux=0;
     aux_cord_vector[i] = aux;
     if(Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])) // live cell in this position (0/-1)
-      liveCells++;
+    liveCells++;
 
     aux_cord_vector[i] = cord_vector[i];
   }
@@ -88,6 +86,7 @@ int checkLiveCells(int x, int y, int z, vector<vector<Node*>> &Cube){
 }
 
 // Split a string depending on the separation (sep) character
+// used to read cube from file
 vector<string> split(const string &text, char sep) {
   vector<string> tokens;
   size_t start = 0, end = 0;
@@ -100,6 +99,7 @@ vector<string> split(const string &text, char sep) {
 }
 
 
+//reads cube from file a returns the cube data structure
 vector<vector<int>> readInputFile(string filename){
 
   ifstream infile;
@@ -113,8 +113,8 @@ vector<vector<int>> readInputFile(string filename){
   {
     if(firstline){
       stringstream stream;
-    	stream << line;
-  		stream >> cube_size;
+      stream << line;
+      stream >> cube_size;
       Cube.resize(cube_size);
 
       firstline = false;
@@ -129,6 +129,7 @@ vector<vector<int>> readInputFile(string filename){
   infile.close();
   return Cube;
 }
+
 
 void print_in_order(Node* p, int a, int b){
   if(p != NULL){
@@ -150,115 +151,116 @@ void printCube(vector<vector<Node*>> &Cube){
 
 void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<Node*>> &newCube, vector<vector<int>> &toSendCube, bool insert)
 {
-    if(p->left) inorder(p->left, a, b, Cube, newCube, toSendCube, insert);
-    // Do something with node p
-    int z = p->z;
+  if(p->left) inorder(p->left, a, b, Cube, newCube, toSendCube, insert);
+  // Do something with node p
+  int z = p->z;
 
-    int aux_live_cells = checkLiveCells(a, b, z, Cube);
-    if(aux_live_cells>=2 and aux_live_cells<=4){ // cell lives
-      Insert(&newCube[a][b], z);
-      if(insert){
-        if(toSendCube.size()>2){
-          toSendCube[a].push_back(b); // insert y
-          toSendCube[a].push_back(z); // insert z
+  int aux_live_cells = checkLiveCells(a, b, z, Cube);
+  if(aux_live_cells>=2 and aux_live_cells<=4){ // cell lives
+    Insert(&newCube[a][b], z);
+    if(insert){
+      if(toSendCube.size()>2){
+        toSendCube[a].push_back(b); // insert y
+        toSendCube[a].push_back(z); // insert z
+      }else{
+        if(a==1){
+          toSendCube[0].push_back(b); // insert y
+          toSendCube[0].push_back(z); // insert z
         }else{
-          if(a==1){
-            toSendCube[0].push_back(b); // insert y
-            toSendCube[0].push_back(z); // insert z
-          }else{
-            toSendCube[1].push_back(b); // insert y
-            toSendCube[1].push_back(z); // insert z
-          }
+          toSendCube[1].push_back(b); // insert y
+          toSendCube[1].push_back(z); // insert z
         }
       }
     }
-    // Check Neighbours
-    int cord_vector[3], aux_cord_vector[3], aux;
+  }
+  // Check Neighbours
+  int cord_vector[3], aux_cord_vector[3], aux;
 
-    aux_cord_vector[0] = cord_vector[0] = a;
-    aux_cord_vector[1] = cord_vector[1] = b;
-    aux_cord_vector[2] = cord_vector[2] = z;
+  aux_cord_vector[0] = cord_vector[0] = a;
+  aux_cord_vector[1] = cord_vector[1] = b;
+  aux_cord_vector[2] = cord_vector[2] = z;
 
-    for(int i=0;i<3;i++){
+  for(int i=0;i<3;i++){
 
-      aux = cord_vector[i]-1;
-      if(!(i==0 and aux==0)){ //Dont compute firstline in x
-        if(aux==-1) aux=cube_size-1;
-        aux_cord_vector[i] = aux;
-        if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
-          aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
-            Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
-            if(insert){
-              if(toSendCube.size()>2){ // only insert in the last iteration
-                toSendCube[a].push_back(b); // insert y
-                toSendCube[a].push_back(z); // insert z
-              }
+    aux = cord_vector[i]-1;
+    if(!(i==0 and aux==0)){ //Dont compute firstline in x
+      if(aux==-1) aux=cube_size-1;
+      aux_cord_vector[i] = aux;
+      if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
+        aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
+        if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
+          Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
+          if(insert){
+            if(toSendCube.size()>2){ // only insert in the last iteration
+              toSendCube[a].push_back(b); // insert y
+              toSendCube[a].push_back(z); // insert z
             }
           }
         }
       }
+    }
 
-      aux = cord_vector[i]+1;
-      if(!(i==0 and aux==cube_size-1)){ //Dont compute lastline in x
-        if(aux==cube_size) aux=0;
-        aux_cord_vector[i] = aux;
-        if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
-          aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
-          if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
-            Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
-            if(insert){
-              if(toSendCube.size()>2){ // only insert in the last iteration
-                toSendCube[a].push_back(b); // insert y
-                toSendCube[a].push_back(z); // insert z
-              }
+    aux = cord_vector[i]+1;
+    if(!(i==0 and aux==cube_size-1)){ //Dont compute lastline in x
+      if(aux==cube_size) aux=0;
+      aux_cord_vector[i] = aux;
+      if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
+        aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
+        if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
+          Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
+          if(insert){
+            if(toSendCube.size()>2){ // only insert in the last iteration
+              toSendCube[a].push_back(b); // insert y
+              toSendCube[a].push_back(z); // insert z
             }
           }
         }
       }
-
-      aux_cord_vector[i] = cord_vector[i];
-
     }
 
-    if(p->right) inorder(p->right, a, b, Cube, newCube, toSendCube, insert);
-    else return;
+    aux_cord_vector[i] = cord_vector[i];
+
+  }
+
+  if(p->right) inorder(p->right, a, b, Cube, newCube, toSendCube, insert);
+  else return;
 }
 
 /*My_x is the value of x that the process starts with*/
 // Transform Cube vector<vector<int>> to vector<vector<Node*>>
+// to be sent to others nodes???
 vector<vector<Node*>> cube_dismember(vector<vector<int>> Cube){
 
- vector<vector<Node*>> Cubinho;
+  vector<vector<Node*>> Cubinho;
 
- Cubinho.resize(cube_size);
+  Cubinho.resize(cube_size);
 
- for(int k=0;k<cube_size;++k)
-    Cubinho[k].resize(cube_size);
+  for(int k=0;k<cube_size;++k)
+  Cubinho[k].resize(cube_size);
 
- for(int i=0;i<Cube.size();++i){
+  for(int i=0;i<Cube.size();++i){
     for(int j=0;j<Cube[i].size();++j){
 
-        if(j%2==0){
-          Insert(&Cubinho[i][Cube[i][j]], Cube[i][j+1]);
-        }
+      if(j%2==0){
+        Insert(&Cubinho[i][Cube[i][j]], Cube[i][j+1]);
+      }
     }
- }
- return Cubinho;
+  }
+  return Cubinho;
 }
 
 vector<vector<Node*>> joinCubes(vector<vector<Node*>> CubeA, vector<vector<int>> CubeB){
   int pos; //position to insert in CubeA
   for(int i=0;i<2;++i){
-     if(i==0) pos = 0;
-     else pos = CubeA.size()-1;
+    if(i==0) pos = 0;
+    else pos = CubeA.size()-1;
 
-     for(int j=0;j<CubeB[i].size();++j){
+    for(int j=0;j<CubeB[i].size();++j){
 
-         if(j%2==0){
-           Insert(&CubeA[pos][CubeB[i][j]], CubeB[i][j+1]);
-         }
-     }
+      if(j%2==0){
+        Insert(&CubeA[pos][CubeB[i][j]], CubeB[i][j+1]);
+      }
+    }
   }
   return CubeA;
 }
@@ -272,10 +274,8 @@ int main(int argc, char *argv[]){
     cout<<"usage: "<< argv[0] << " <filename> <number_gen>" << endl;
     return -1;
   }
-
   //MPI vars
   vector<vector<int>> Cube;
-
   int me, nprocs;
 
   MPI_Init(&argc, &argv);
@@ -288,6 +288,7 @@ int main(int argc, char *argv[]){
   ss << argv[2];
   ss >> number_gen;
 
+  //Master node
   if(me == 0){
 
     Cube = readInputFile(argv[1]);
@@ -296,11 +297,11 @@ int main(int argc, char *argv[]){
     vector_int.resize(nprocs);
 
     for(int i = 0; i <nprocs;i++)
-      vector_int[i] = cube_size/nprocs;
+    vector_int[i] = cube_size/nprocs;
 
     if(cube_size%nprocs != 0){
       for(int i=0; i< cube_size%nprocs; i++)
-        vector_int[i]++;
+      vector_int[i]++;
     }
     int aux_n_linha = 0; //linha a mandar
     // sends to all slaves
@@ -369,77 +370,69 @@ int main(int argc, char *argv[]){
       vector<vector<int>> toSendCube;
       vector<vector<int>> receivedCube;
       if(p==(number_gen-1)) // last iteration => send all Cube
-        {toSendCube.resize(cube_size);
+      {toSendCube.resize(cube_size);
         receivedCube.resize(cube_size);}
-      else //else, send first and lastline only
+        else //else, send first and lastline only
         {toSendCube.resize(2);
-        receivedCube.resize(2);}
+          receivedCube.resize(2);}
 
-      // Reset newCube
-      vector<vector<Node*>> newCube;
-      newCube.resize(cube_size);
-      for (auto &a: newCube) a.resize(cube_size);
+          // Reset newCube
+          vector<vector<Node*>> newCube;
+          newCube.resize(cube_size);
+          for (auto &a: newCube) a.resize(cube_size);
 
-      // Compute secondline in x
-      for(int b=0; b<cube_size; ++b){
-        Node* z_tree = (Cubinho[1][b]);
-        if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
-      }
-      // Compute second lastline in x
-      for(int b=0; b<cube_size; ++b){
-        Node* z_tree = (Cubinho[(cube_size-2)][b]);
-        if (z_tree != NULL) inorder(z_tree, cube_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
-      }
-
-      // TODO: A mudar para Irecv e Isend
-      // Send first and lastline via MPI, if not last iteration
-      // Receive second and second last via MPI, if not last iteration
-      if(p!=(number_gen-1)){
-        int aux_ldim; // dimension of the line
-        int slave_n; // number of slave to send
-        for(int c=0; c<2; ++c){
-          if(c==0){ // send to previous
-            slave_n = me - 1;
-            if(slave_n == 0) slave_n = nprocs-1;
-          }else{ // send to next
-            slave_n = me + 1;
-            if(slave_n == nprocs) slave_n = 1;
+          // Compute secondline in x
+          for(int b=0; b<cube_size; ++b){
+            Node* z_tree = (Cubinho[1][b]);
+            if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
           }
-          int aux = toSendCube[c].size();
-          MPI_Send(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD); // send dimension of line
-          cout <<aux<<", "<<me<<endl;
-          MPI_Send(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD); // send line
-          cout <<p<<", "<<me<<endl;
+          // Compute second lastline in x
+          for(int b=0; b<cube_size; ++b){
+            Node* z_tree = (Cubinho[(cube_size-2)][b]);
+            if (z_tree != NULL) inorder(z_tree, cube_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
+          }
 
-          MPI_Recv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &status); // receive dimension
-          MPI_Recv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &status); // receive line
+          // TODO: A mudar para Irecv e Isend
+          // Send first and lastline via MPI, if not last iteration
+          // Receive second and second last via MPI, if not last iteration
+          if(p!=(number_gen-1)){
+            int aux_ldim; // dimension of the line
+            int slave_n; // number of slave to send
+            for(int c=0; c<2; ++c){
+              if(c==0){ // send to previous
+                slave_n = me - 1;
+                if(slave_n == 0) slave_n = nprocs-1;
+              }else{ // send to next
+                slave_n = me + 1;
+                if(slave_n == nprocs) slave_n = 1;
+              }
+              int aux = toSendCube[c].size();
+              MPI_Send(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD); // send dimension of line
+              cout <<aux<<", "<<me<<endl;
+              MPI_Send(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD); // send line
+              cout <<p<<", "<<me<<endl;
+
+              MPI_Recv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &status); // receive dimension
+              MPI_Recv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &status); // receive line
+            }
+          }
+
+          // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
+          bool insert = false;
+          if(p==(number_gen-1)) insert = true;
+          for(int a=2; a<(cube_size-2); ++a){
+            for(int b=0; b<cube_size; ++b){
+              Node* z_tree = (Cubinho[a][b]);
+              if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube, toSendCube, insert); //Iterate in binary tree
+            }
+          }
+          newCube = joinCubes(newCube, receivedCube);
+          Cubinho = newCube;
         }
       }
+      //float end = omp_get_wtime();
+      //cout << end-start << endl;
 
-      // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
-      bool insert = false;
-      if(p==(number_gen-1)) insert = true;
-      for(int a=2; a<(cube_size-2); ++a){
-        for(int b=0; b<cube_size; ++b){
-          Node* z_tree = (Cubinho[a][b]);
-          if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube, toSendCube, insert); //Iterate in binary tree
-        }
-      }
-
-      newCube = joinCubes(newCube, receivedCube);
-
-      Cubinho = newCube;
-
-
-
+      MPI_Finalize();
+      return 0;
     }
-
-
-
-  }
-  //float end = omp_get_wtime();
-  //cout << end-start << endl;
-
-  MPI_Finalize();
-  return 0;
-}
