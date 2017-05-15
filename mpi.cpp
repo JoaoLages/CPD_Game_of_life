@@ -375,6 +375,7 @@ int main(int argc, char *argv[]){
 
           // Reset newCube ???? MANEL pq se faz isto todas as gerações?
           // pq nao penas 1 vez de depois so se fazer resize
+          // R: talvez fazer resize apenas resulte, o objectivo era limpar mesmo. anyway, não é por aqui q o gato vai às filhoses
           vector<vector<Node*>> newCube;
           newCube.resize(cube_size);
           for (auto &a: newCube) a.resize(cube_size);
@@ -395,32 +396,36 @@ int main(int argc, char *argv[]){
           // Receive second and second last via MPI, if not last iteration
           if(p!=(number_gen-1)){
             int aux_ldim; // dimension of the line
-            int slave_n; // number of slave to send
+            int slave_n_send; // number of slave to send
+            int slave_n_recv; // number of slave to receive
             for(int c=0; c<2; ++c){
               if(c==0){ // send to previous
-                slave_n = me - 1;
-                if(slave_n == 0) slave_n = nprocs-1;
+                slave_n_send = me - 1;
+                if(slave_n_send == 0) slave_n_send = nprocs-1;
+                slave_n_recv = me + 1;
+                if(slave_n_recv == nprocs) slave_n_recv = 1;
               }else{ // send to next
-                slave_n = me + 1;
-                if(slave_n == nprocs) slave_n = 1;
+                slave_n_recv = me - 1;
+                if(slave_n_recv == 0) slave_n_recv = nprocs-1;
+                slave_n_send = me + 1;
+                if(slave_n_send == nprocs) slave_n_send = 1;
               }
 
               // correr para cada cubo
-
 
               MPI_Request requests[2];
               MPI_Status statuses[2];
 
               int aux = toSendCube[c].size();
 
-              MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
-              MPI_Isend(&aux, 1, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
+              MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
+              MPI_Isend(&aux, 1, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
               cout <<"first arg: "<< aux<<", Process: "<< me <<endl;
 
               MPI_Waitall(2,requests, statuses);
 
-              MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
-              MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n, TAG, MPI_COMM_WORLD, &requests[0]); // send line
+              MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
+              MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
               cout << "second arg: "<<p<<", Process: "<< me <<endl;
 
               MPI_Waitall(2,requests, statuses);
