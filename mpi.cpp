@@ -367,87 +367,89 @@ int main(int argc, char *argv[]){
       vector<vector<int>> toSendCube;
       vector<vector<int>> receivedCube;
       if(p==(number_gen-1)) // last iteration => send all Cube
-      {toSendCube.resize(cube_size);
-        receivedCube.resize(cube_size);}
-        else //else, send first and lastline only
-        {toSendCube.resize(2);
-          receivedCube.resize(2);}
+        toSendCube.resize(cube_size);
+      else //else, send first and lastline only
+        toSendCube.resize(2);
 
-          // Reset newCube ???? MANEL pq se faz isto todas as gerações?
-          // pq nao penas 1 vez de depois so se fazer resize
-          // R: talvez fazer resize apenas resulte, o objectivo era limpar mesmo. anyway, não é por aqui q o gato vai às filhoses
-          vector<vector<Node*>> newCube;
-          newCube.resize(cube_size);
-          for (auto &a: newCube) a.resize(cube_size);
+      receivedCube.resize(2);
 
-          // Compute secondline in x
-          for(int b=0; b<cube_size; ++b){
-            Node* z_tree = (Cubinho[1][b]);
-            if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
-          }
-          // Compute second lastline in x
-          for(int b=0; b<cube_size; ++b){
-            Node* z_tree = (Cubinho[(cube_size-2)][b]);
-            if (z_tree != NULL) inorder(z_tree, cube_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
-          }
+      // Reset newCube ???? MANEL pq se faz isto todas as gerações?
+      // pq nao penas 1 vez de depois so se fazer resize
+      // R: talvez fazer resize apenas resulte, o objectivo era limpar mesmo. anyway, não é por aqui q o gato vai às filhoses
+      vector<vector<Node*>> newCube;
+      newCube.resize(cube_size);
+      for (auto &a: newCube) a.resize(cube_size);
 
-          // TODO: A mudar para Irecv e Isend
-          // Send first and lastline via MPI, if not last iteration
-          // Receive second and second last via MPI, if not last iteration
-          if(p!=(number_gen-1)){
-            int aux_ldim; // dimension of the line
-            int slave_n_send; // number of slave to send
-            int slave_n_recv; // number of slave to receive
-            for(int c=0; c<2; ++c){
-              if(c==0){ // send to previous
-                slave_n_send = me - 1;
-                if(slave_n_send == 0) slave_n_send = nprocs-1;
-                slave_n_recv = me + 1;
-                if(slave_n_recv == nprocs) slave_n_recv = 1;
-              }else{ // send to next
-                slave_n_recv = me - 1;
-                if(slave_n_recv == 0) slave_n_recv = nprocs-1;
-                slave_n_send = me + 1;
-                if(slave_n_send == nprocs) slave_n_send = 1;
-              }
+      // Compute secondline in x
+      for(int b=0; b<cube_size; ++b){
+        Node* z_tree = (Cubinho[1][b]);
+        if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
+      }
+      // Compute second lastline in x
+      for(int b=0; b<cube_size; ++b){
+        Node* z_tree = (Cubinho[(cube_size-2)][b]);
+        if (z_tree != NULL) inorder(z_tree, cube_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
+      }
 
-              // correr para cada cubo
-
-              MPI_Request requests[2];
-              MPI_Status statuses[2];
-
-              int aux = toSendCube[c].size();
-
-              MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
-              MPI_Isend(&aux, 1, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
-              cout <<"first arg: "<< aux<<", Process: "<< me <<endl;
-
-              MPI_Waitall(2,requests, statuses);
-
-              MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
-              MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
-              cout << "second arg: "<<p<<", Process: "<< me <<endl;
-
-              MPI_Waitall(2,requests, statuses);
-            }
+      // TODO: A mudar para Irecv e Isend
+      // Send first and lastline via MPI, if not last iteration
+      // Receive second and second last via MPI, if not last iteration
+      if(p!=(number_gen-1)){
+        int aux_ldim; // dimension of the line
+        int slave_n_send; // number of slave to send
+        int slave_n_recv; // number of slave to receive
+        for(int c=0; c<2; ++c){
+          if(c==0){ // send to previous
+            slave_n_send = me - 1;
+            if(slave_n_send == 0) slave_n_send = nprocs-1;
+            slave_n_recv = me + 1;
+            if(slave_n_recv == nprocs) slave_n_recv = 1;
+          }else{ // send to next
+            slave_n_recv = me - 1;
+            if(slave_n_recv == 0) slave_n_recv = nprocs-1;
+            slave_n_send = me + 1;
+            if(slave_n_send == nprocs) slave_n_send = 1;
           }
 
-          // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
-          bool insert = false;
-          if(p==(number_gen-1)) insert = true;
-          for(int a=2; a<(cube_size-2); ++a){
-            for(int b=0; b<cube_size; ++b){
-              Node* z_tree = (Cubinho[a][b]);
-              if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube, toSendCube, insert); //Iterate in binary tree
-            }
-          }
-          newCube = joinCubes(newCube, receivedCube);
-          Cubinho = newCube;
+          // correr para cada cubo
+
+          MPI_Request requests[2];
+          MPI_Status statuses[2];
+
+          int aux = toSendCube[c].size();
+
+          MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
+          MPI_Isend(&aux, 1, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
+          cout <<"first arg: "<< aux<<", Process: "<< me <<endl;
+
+          MPI_Waitall(2,requests, statuses);
+
+          receivedCube[c].resize(aux_ldim);
+          MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
+          cout <<"received"<<endl;
+          MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
+          cout << "second arg: "<<p<<", Process: "<< me <<endl;
+
+          MPI_Waitall(2,requests, statuses);
         }
       }
-      //float end = omp_get_wtime();
-      //cout << end-start << endl;
 
-      MPI_Finalize();
-      return 0;
+      // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
+      bool insert = false;
+      if(p==(number_gen-1)) insert = true;
+      for(int a=2; a<(cube_size-2); ++a){
+        for(int b=0; b<cube_size; ++b){
+          Node* z_tree = (Cubinho[a][b]);
+          if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube, toSendCube, insert); //Iterate in binary tree
+        }
+      }
+      if(p!=(number_gen-1)) newCube = joinCubes(newCube, receivedCube); // JOin cubes except in the final iteration
+      Cubinho = newCube;
     }
+  }
+  //float end = omp_get_wtime();
+  //cout << end-start << endl;
+
+  MPI_Finalize();
+  return 0;
+}
