@@ -191,7 +191,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
     aux = cord_vector[i]-1;
     if(me==3){cout<<"antes if1"<<endl;}
     if(!(i==0 and aux==0)){ //Dont compute firstline in x
-      if(aux==-1) aux=cube_size-1;
+      if(aux==-1 and i!=0) aux=cube_size-1;
       aux_cord_vector[i] = aux;
       if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
         aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
@@ -211,7 +211,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
     aux = cord_vector[i]+1;
     if(me==3){cout<<"antes if2"<<endl;}
     if(!(i==0 and aux==x_size-1)){ //Dont compute lastline in x
-      if(aux==cube_size) aux=0;
+      if(aux==cube_size and i!=0) aux=0;
       aux_cord_vector[i] = aux;
       if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
         if(me==3){cout<<"antes check"<<endl;}
