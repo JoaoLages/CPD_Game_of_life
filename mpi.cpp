@@ -7,6 +7,7 @@
 #include <unordered_set> // unordered_set
 #include <algorithm>
 #include <mpi.h>
+#include <unistd.h>
 
 #define TAG 123
 
@@ -30,7 +31,9 @@ struct Node {
   }
 };
 
-int cube_size; // glocal variable
+int cube_size; // global variable
+int x_size;
+int me;
 
 bool Find( Node** node, int value )
 {
@@ -65,7 +68,7 @@ int checkLiveCells(int x, int y, int z, vector<vector<Node*>> &Cube){
   aux_cord_vector[0] = cord_vector[0] = x;
   aux_cord_vector[1] = cord_vector[1] = y;
   aux_cord_vector[2] = cord_vector[2] = z;
-
+  cout<<x<<", "<<y<<", "<<z<<endl;
   for(i=0;i<3;i++){
 
     aux = cord_vector[i]-1;
@@ -141,7 +144,7 @@ void print_in_order(Node* p, int a, int b){
 
 // Program Output
 void printCube(vector<vector<Node*>> &Cube, int my_x){
-  cout<<my_x<<endl;
+  cout<<my_x<<", "<<Cube.size()<<endl;
   for(int a=0; a<cube_size; ++a){
     for(int b=0; b<cube_size; ++b){
       print_in_order(Cube[a][b], my_x+a-1, b);
@@ -154,8 +157,10 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
   if(p->left) inorder(p->left, a, b, Cube, newCube, toSendCube, insert);
   // Do something with node p
   int z = p->z;
-
+  if(me==3){cout<<"antes check live cells"<<endl;}
   int aux_live_cells = checkLiveCells(a, b, z, Cube);
+  if(me==3){cout<<"depois check live cells"<<endl;}
+
   if(aux_live_cells>=2 and aux_live_cells<=4){ // cell lives
     Insert(&newCube[a][b], z);
     if(insert){
@@ -173,6 +178,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
       }
     }
   }
+
   // Check Neighbours
   int cord_vector[3], aux_cord_vector[3], aux;
 
@@ -183,6 +189,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
   for(int i=0;i<3;i++){
 
     aux = cord_vector[i]-1;
+    if(me==3){cout<<"antes if1"<<endl;}
     if(!(i==0 and aux==0)){ //Dont compute firstline in x
       if(aux==-1) aux=cube_size-1;
       aux_cord_vector[i] = aux;
@@ -199,13 +206,18 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
         }
       }
     }
+    if(me==3){cout<<"depois if1"<<endl;}
 
     aux = cord_vector[i]+1;
-    if(!(i==0 and aux==cube_size-1)){ //Dont compute lastline in x
+    if(me==3){cout<<"antes if2"<<endl;}
+    if(!(i==0 and aux==x_size-1)){ //Dont compute lastline in x
       if(aux==cube_size) aux=0;
       aux_cord_vector[i] = aux;
       if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
+        if(me==3){cout<<"antes check"<<endl;}
         aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
+        if(me==3){cout<<"depois check"<<endl;}
+
         if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
           Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
           if(insert){
@@ -217,6 +229,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
         }
       }
     }
+    if(me==3){cout<<"depois if2"<<endl;}
 
     aux_cord_vector[i] = cord_vector[i];
 
@@ -233,9 +246,9 @@ vector<vector<Node*>> cube_dismember(vector<vector<int>> Cube){
 
   vector<vector<Node*>> Cubinho;
 
-  Cubinho.resize(cube_size);
+  Cubinho.resize(x_size);
 
-  for(int k=0;k<cube_size;++k)
+  for(int k=0;k<x_size;++k)
   Cubinho[k].resize(cube_size);
 
   for(int i=0;i<Cube.size();++i){
@@ -276,7 +289,7 @@ int main(int argc, char *argv[]){
   }
   //MPI vars
   vector<vector<int>> Cube;
-  int me, nprocs;
+  int nprocs;
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -385,7 +398,8 @@ int main(int argc, char *argv[]){
 
     Cube.resize(infos[1]+2); //infos vai ter cube_size, n_lines e my_x por esta ordem
 
-    cube_size=infos[0];
+    x_size=(infos[1]+2);
+    cube_size = infos[0];
 
     int aux_ldim; // dimension of the line
     for(int i=0; i<(infos[1]+2); i++){
@@ -396,7 +410,6 @@ int main(int argc, char *argv[]){
       // redimension line
       MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
     }
-
     vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
     for(int p=0;p<number_gen; ++p){
@@ -404,7 +417,7 @@ int main(int argc, char *argv[]){
       vector<vector<int>> toSendCube;
       vector<vector<int>> receivedCube;
       if(p==(number_gen-1)) // last iteration => send all Cube
-        toSendCube.resize(cube_size);
+        toSendCube.resize(x_size);
       else //else, send first and lastline only
         toSendCube.resize(2);
 
@@ -414,7 +427,7 @@ int main(int argc, char *argv[]){
       // pq nao penas 1 vez de depois so se fazer resize
       // R: talvez fazer resize apenas resulte, o objectivo era limpar mesmo. anyway, não é por aqui q o gato vai às filhoses
       vector<vector<Node*>> newCube;
-      newCube.resize(cube_size);
+      newCube.resize(x_size);
       for (auto &a: newCube) a.resize(cube_size);
 
       // Compute secondline in x
@@ -422,10 +435,11 @@ int main(int argc, char *argv[]){
         Node* z_tree = (Cubinho[1][b]);
         if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
       }
+
       // Compute second lastline in x
       for(int b=0; b<cube_size; ++b){
-        Node* z_tree = (Cubinho[(cube_size-2)][b]);
-        if (z_tree != NULL) inorder(z_tree, cube_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
+        Node* z_tree = (Cubinho[(x_size-2)][b]);
+        if (z_tree != NULL) inorder(z_tree, x_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
       }
 
       // TODO: A mudar para Irecv e Isend
@@ -475,7 +489,7 @@ int main(int argc, char *argv[]){
       // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
       bool insert = false;
       if(p==(number_gen-1)) insert = true;
-      for(int a=2; a<(cube_size-2); ++a){
+      for(int a=2; a<(x_size-2); ++a){
         for(int b=0; b<cube_size; ++b){
           Node* z_tree = (Cubinho[a][b]);
           if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube, toSendCube, insert); //Iterate in binary tree
