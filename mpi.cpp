@@ -68,7 +68,6 @@ int checkLiveCells(int x, int y, int z, vector<vector<Node*>> &Cube){
   aux_cord_vector[0] = cord_vector[0] = x;
   aux_cord_vector[1] = cord_vector[1] = y;
   aux_cord_vector[2] = cord_vector[2] = z;
-  cout<<x<<", "<<y<<", "<<z<<endl;
   for(i=0;i<3;i++){
 
     aux = cord_vector[i]-1;
@@ -133,6 +132,14 @@ vector<vector<int>> readInputFile(string filename){
   return Cube;
 }
 
+void buildToSendCube(Node* p, vector<vector<int>> &toSendCube, int x, int y){
+  if(p != NULL){
+    if(p->left) buildToSendCube(p->left, toSendCube, x, y);
+    toSendCube[x].push_back(y);
+    toSendCube[x].push_back(p->z);
+    if(p->right) buildToSendCube(p->right, toSendCube, x, y);
+  }return;
+}
 
 void print_in_order(Node* p, int a, int b){
   if(p != NULL){
@@ -144,39 +151,22 @@ void print_in_order(Node* p, int a, int b){
 
 // Program Output
 void printCube(vector<vector<Node*>> &Cube, int my_x){
-  cout<<my_x<<", "<<Cube.size()<<endl;
-  for(int a=0; a<cube_size; ++a){
-    for(int b=0; b<cube_size; ++b){
+  for(int a=1; a<(x_size-1); a++){
+    for(int b=0; b<cube_size; b++){
       print_in_order(Cube[a][b], my_x+a-1, b);
     }
   }
 }
 
-void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<Node*>> &newCube, vector<vector<int>> &toSendCube, bool insert)
+void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<Node*>> &newCube)
 {
-  if(p->left) inorder(p->left, a, b, Cube, newCube, toSendCube, insert);
+  if(p->left) inorder(p->left, a, b, Cube, newCube);
   // Do something with node p
   int z = p->z;
-  if(me==3){cout<<"antes check live cells"<<endl;}
   int aux_live_cells = checkLiveCells(a, b, z, Cube);
-  if(me==3){cout<<"depois check live cells"<<endl;}
 
   if(aux_live_cells>=2 and aux_live_cells<=4){ // cell lives
     Insert(&newCube[a][b], z);
-    if(insert){
-      if(toSendCube.size()>2){
-        toSendCube[a].push_back(b); // insert y
-        toSendCube[a].push_back(z); // insert z
-      }else{
-        if(a==1){
-          toSendCube[0].push_back(b); // insert y
-          toSendCube[0].push_back(z); // insert z
-        }else{
-          toSendCube[1].push_back(b); // insert y
-          toSendCube[1].push_back(z); // insert z
-        }
-      }
-    }
   }
 
   // Check Neighbours
@@ -189,7 +179,6 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
   for(int i=0;i<3;i++){
 
     aux = cord_vector[i]-1;
-    if(me==3){cout<<"antes if1"<<endl;}
     if(!(i==0 and aux==0)){ //Dont compute firstline in x
       if(aux==-1 and i!=0) aux=cube_size-1;
       aux_cord_vector[i] = aux;
@@ -197,45 +186,28 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
         aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
         if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
           Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
-          if(insert){
-            if(toSendCube.size()>2){ // only insert in the last iteration
-              toSendCube[a].push_back(b); // insert y
-              toSendCube[a].push_back(z); // insert z
-            }
-          }
         }
       }
     }
-    if(me==3){cout<<"depois if1"<<endl;}
 
     aux = cord_vector[i]+1;
-    if(me==3){cout<<"antes if2"<<endl;}
     if(!(i==0 and aux==x_size-1)){ //Dont compute lastline in x
       if(aux==cube_size and i!=0) aux=0;
       aux_cord_vector[i] = aux;
       if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
-        if(me==3){cout<<"antes check"<<endl;}
         aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
-        if(me==3){cout<<"depois check"<<endl;}
 
         if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
           Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
-          if(insert){
-            if(toSendCube.size()>2){ // only insert in the last iteration
-              toSendCube[a].push_back(b); // insert y
-              toSendCube[a].push_back(z); // insert z
-            }
-          }
         }
       }
     }
-    if(me==3){cout<<"depois if2"<<endl;}
 
     aux_cord_vector[i] = cord_vector[i];
 
   }
 
-  if(p->right) inorder(p->right, a, b, Cube, newCube, toSendCube, insert);
+  if(p->right) inorder(p->right, a, b, Cube, newCube);
   else return;
 }
 
@@ -262,11 +234,11 @@ vector<vector<Node*>> cube_dismember(vector<vector<int>> Cube){
   return Cubinho;
 }
 
-vector<vector<Node*>> joinCubes(vector<vector<Node*>> CubeA, vector<vector<int>> CubeB){
+void joinCubes(vector<vector<Node*>> &CubeA, vector<vector<int>> &CubeB){
   int pos; //position to insert in CubeA
   for(int i=0;i<2;++i){
-    if(i==0) pos = 0;
-    else pos = CubeA.size()-1;
+    if(i==0) pos = x_size-1;
+    else pos = 0;
 
     for(int j=0;j<CubeB[i].size();++j){
 
@@ -275,7 +247,7 @@ vector<vector<Node*>> joinCubes(vector<vector<Node*>> CubeA, vector<vector<int>>
       }
     }
   }
-  return CubeA;
+  return;
 }
 
 int main(int argc, char *argv[]){
@@ -336,10 +308,10 @@ int main(int argc, char *argv[]){
         if(aux > 0) // send dimension of line
           MPI_Send(&Cube.back().front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }else{
-        int aux = Cube[aux_n_linha].size();
+        int aux = Cube[aux_n_linha-1].size();
         MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
         if(aux > 0)
-          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+          MPI_Send(&Cube[aux_n_linha-1].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }
       for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
         int aux = Cube[aux_n_linha].size();
@@ -433,14 +405,43 @@ int main(int argc, char *argv[]){
       // Compute secondline in x
       for(int b=0; b<cube_size; ++b){
         Node* z_tree = (Cubinho[1][b]);
-        if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
+        if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube); //Iterate in binary tree
       }
 
-      // Compute second lastline in x
-      for(int b=0; b<cube_size; ++b){
-        Node* z_tree = (Cubinho[(x_size-2)][b]);
-        if (z_tree != NULL) inorder(z_tree, x_size-2, b, Cubinho, newCube, toSendCube, true); //Iterate in binary tree
+      if(1!=x_size-2){
+        // Compute second lastline in x
+        for(int b=0; b<cube_size; ++b){
+          Node* z_tree = (Cubinho[(x_size-2)][b]);
+          if (z_tree != NULL) inorder(z_tree, x_size-2, b, Cubinho, newCube); //Iterate in binary tree
+        }
       }
+
+      // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
+      for(int a=2; a<(x_size-2); ++a){
+        for(int b=0; b<cube_size; ++b){
+          Node* z_tree = (Cubinho[a][b]);
+          if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
+        }
+      }
+
+      if(p==(number_gen-1)){ // meter newCube todo no toSendCube
+        for(int a=1; a<(x_size-1); ++a){
+          for(int b=0; b<cube_size; ++b){
+            Node* z_tree = (newCube[a][b]);
+            if (z_tree != NULL) buildToSendCube(z_tree, toSendCube, a, b);
+          }
+        }
+      }else{ // meter apenas 2 linhas do Cubo
+        for(int b=0; b<cube_size; ++b){ //meter segunda linha
+          Node* z_tree = (newCube[1][b]);
+          if (z_tree != NULL) buildToSendCube(z_tree, toSendCube, 0, b);
+        }
+        for(int b=0; b<cube_size; ++b){ //meter penultima linha
+          Node* z_tree = (newCube[x_size-2][b]);
+          if (z_tree != NULL) buildToSendCube(z_tree, toSendCube, 1, b);
+        }
+      }
+
 
       // TODO: A mudar para Irecv e Isend
       // Send first and lastline via MPI, if not last iteration
@@ -483,21 +484,24 @@ int main(int argc, char *argv[]){
             MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
 
           MPI_Waitall(2,requests, statuses);
+
+          /*
+          usleep(1000000*me);
+          cout <<me<<endl;
+          for(int m=0; m<receivedCube[c].size(); m++){
+            cout<<receivedCube[c][m]<<" ";
+          }
+          cout << endl;*/
         }
       }
 
-      // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
-      bool insert = false;
-      if(p==(number_gen-1)) insert = true;
-      for(int a=2; a<(x_size-2); ++a){
-        for(int b=0; b<cube_size; ++b){
-          Node* z_tree = (Cubinho[a][b]);
-          if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube, toSendCube, insert); //Iterate in binary tree
-        }
-      }
-      if(p!=(number_gen-1)) newCube = joinCubes(newCube, receivedCube); // JOin cubes except in the final iteration
+      if(p!=(number_gen-1)) joinCubes(newCube, receivedCube); // JOin cubes except in the final iteration
       Cubinho = newCube;
+      //if(p!=(number_gen-1)){usleep(1000000*me);
+      //printCube(Cubinho, infos[2]);}
+
     }
+    usleep(1000000*me);
     printCube(Cubinho, infos[2]);
 
 
