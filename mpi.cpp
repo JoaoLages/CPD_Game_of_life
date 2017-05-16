@@ -299,13 +299,14 @@ int main(int argc, char *argv[]){
     for(int i = 0; i <nprocs-1;i++)
     vector_int[i] = cube_size/nprocs;
 
-    if(cube_size%nprocs != 0){
-      for(int i=0; i< cube_size%nprocs; i++)
+    if(cube_size%(nprocs-1) != 0){
+      for(int i=0; i< cube_size%(nprocs-1); i++)
       vector_int[i]++;
     }
     int aux_n_linha = 0; //linha a mandar
     // sends to all slaves ????
 
+    //send cube to slaves
     for(int c=0; c<vector_int.size(); c++){
       vector<int> infos;
       infos.resize(3);
@@ -318,32 +319,66 @@ int main(int argc, char *argv[]){
       // Send firstline of line group
       if(c == 0){
         int aux = Cube.back().size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
-        MPI_Send(&Cube.back().front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD);
+        if(aux > 0) // send dimension of line
+          MPI_Send(&Cube.back().front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }else{
         int aux = Cube[aux_n_linha].size();
         MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
-        MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+        if(aux > 0)
+          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }
       for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
         int aux = Cube[aux_n_linha].size();
         MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
-        MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+        if(aux > 0)
+          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+
         aux_n_linha++;
       }
       // Send last line of line group
       if(c == (vector_int.size()-1)){
         int aux = Cube[0].size();
         MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
-        MPI_Send(&Cube[0].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+        if(aux > 0)
+          MPI_Send(&Cube[0].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }else{
         int aux = Cube[aux_n_linha].size();
         MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
-        MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+        if(aux > 0)
+          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }
-
     }
+    /*
+    //recv cube from slaves to print
+    for(int i=0; i < nprocs-1; i++){
+      vector<int> infos;
+      infos.resize(3);
+      MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+
+      Cube.resize(infos[1]+2); //infos vai ter cube_size, n_lines e my_x por esta ordem
+
+      cube_size=infos[0];
+
+      int aux_ldim; // dimension of the line
+      for(int i=0; i<(infos[1]+2); i++){
+        MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+        Cube[i].resize(aux_ldim);
+        if(aux_ldim==0)
+          continue;
+        // redimension line
+        MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      }
+      //merge cubes and print final cube
+      vector<vector<Node*>> Cubinho = cube_dismember(Cube);
+      printCube(Cubinho, infos[2]);
+    }
+    */
+
   }else{ // Slave code
+
+    //First recv from master
+
     vector<int> infos;
     infos.resize(3);
     MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
@@ -355,7 +390,10 @@ int main(int argc, char *argv[]){
     int aux_ldim; // dimension of the line
     for(int i=0; i<(infos[1]+2); i++){
       MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-      Cube[i].resize(aux_ldim); // redimension line
+      Cube[i].resize(aux_ldim);
+      if(aux_ldim==0)
+        continue;
+      // redimension line
       MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
     }
 
@@ -422,9 +460,13 @@ int main(int argc, char *argv[]){
 
           MPI_Waitall(2,requests, statuses);
 
+          //Check if there is no problem with this MANEL TO DO!!!!
+
           receivedCube[c].resize(aux_ldim);
-          MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
-          MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
+          if(aux_ldim > 0)
+            MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
+          if(aux > 0)
+            MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
 
           MPI_Waitall(2,requests, statuses);
         }
@@ -443,6 +485,52 @@ int main(int argc, char *argv[]){
       Cubinho = newCube;
     }
     printCube(Cubinho, infos[2]);
+
+
+    /*
+    //send cubinho back to master
+    for(int c=0; c<cube_size; c++){
+      vector<int> infos;
+      infos.resize(2);
+
+      infos[0]=vector_int[c]; //number of lines to send to master process
+      infos[1]=aux_n_linha;
+
+      MPI_Send(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD); // send infos to slave
+      // Send firstline of line group
+      if(c == 0){
+        int aux = Cubinho.back().size();
+        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD);
+        if(aux > 0) // send dimension of line
+          MPI_Send(&Cubinho.back().front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
+      }else{
+        int aux = Cubinho[aux_n_linha].size();
+        MPI_Send(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send dimension of line
+        if(aux > 0)
+          MPI_Send(&Cubinho[aux_n_linha].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
+      }
+      for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
+        int aux = Cubinho[aux_n_linha].size();
+        MPI_Send(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send dimension of line
+        if(aux > 0)
+          MPI_Send(&Cubinho[aux_n_linha].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
+
+        aux_n_linha++;
+      }
+      // Send last line of line group
+      if(c == (vector_int.size()-1)){
+        int aux = Cubinho[0].size();
+        MPI_Send(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send dimension of line
+        if(aux > 0)
+          MPI_Send(&Cubinho[0].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
+      }else{
+        int aux = Cubinho[aux_n_linha].size();
+        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
+        if(aux > 0)
+          MPI_Send(&Cubinho[aux_n_linha].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
+      }
+    }
+    */
   }
   //float end = omp_get_wtime();
   //cout << end-start << endl;
