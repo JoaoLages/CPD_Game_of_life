@@ -381,31 +381,41 @@ int main(int argc, char *argv[]){
           MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }
     }
-    /*
+
     //recv cube from slaves to print
+
+    int sum = 0,j= 0;
+    int auxCount = 0;
+
+    for(int i = 0; i < vector_int.size();i++)
+      sum = vector_int[i];
+
+    int sumaux[sum];
+
+    MPI_Request requestomodify[sum];
+    MPI_Status statustomodify[sum];
+
     for(int i=0; i < nprocs-1; i++){
-      vector<int> infos;
-      infos.resize(3);
-      MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-
-      Cube.resize(infos[1]+2); //infos vai ter cube_size, n_lines e my_x por esta ordem
-
-      cube_size=infos[0];
-
-      int aux_ldim; // dimension of the line
-      for(int i=0; i<(infos[1]+2); i++){
-        MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-        Cube[i].resize(aux_ldim);
-        if(aux_ldim==0)
-          continue;
-        // redimension line
-        MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      //First receive size of each line to receive from each slave
+      for(j=0; j < vector_int[i] ; j++){
+        MPI_Irecv(&sumaux[auxCount+j], 1, MPI_INT, i+1, TAG, MPI_COMM_WORLD, &requestomodify[auxCount+j]); // receive dimension
       }
-      //merge cubes and print final cube
-      vector<vector<Node*>> Cubinho = cube_dismember(Cube);
-      printCube(Cubinho, infos[2]);
+      auxCount = auxCount + j;
     }
-    */
+    MPI_Waitall(sum,requestomodify,statustomodify);
+
+    for(int i=0; i < nprocs-1; i++){
+      //Receive each line from each slave
+      for(j=0; j < vector_int[i] ; j++){
+        MPI_Irecv(&sumaux[auxCount+j], 1, MPI_INT, i+1, TAG, MPI_COMM_WORLD, &requestomodify[auxCount+j]);
+        // put lines in the aux struct
+      }
+      auxCount = auxCount + j;
+    }
+
+    //to change
+    //printCube(Cube, 0);
+    cout << "Master ending" << endl;
 
   }else{ // Slave code
 
@@ -562,51 +572,27 @@ int main(int argc, char *argv[]){
     usleep(1000000*me);
     printCube(Cubinho, infos[2]);
 
+    MPI_Request requestss[x_size-2];
+    MPI_Status statusess[x_size-2];
 
-    /*
     //send cubinho back to master
-    for(int c=0; c<cube_size; c++){
-      vector<int> infos;
-      infos.resize(2);
-
-      infos[0]=vector_int[c]; //number of lines to send to master process
-      infos[1]=aux_n_linha;
-
-      MPI_Send(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD); // send infos to slave
-      // Send firstline of line group
-      if(c == 0){
-        int aux = Cubinho.back().size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD);
-        if(aux > 0) // send dimension of line
-          MPI_Send(&Cubinho.back().front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
-      }else{
-        int aux = Cubinho[aux_n_linha].size();
-        MPI_Send(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send dimension of line
-        if(aux > 0)
-          MPI_Send(&Cubinho[aux_n_linha].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
-      }
-      for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
-        int aux = Cubinho[aux_n_linha].size();
-        MPI_Send(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send dimension of line
-        if(aux > 0)
-          MPI_Send(&Cubinho[aux_n_linha].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
-
-        aux_n_linha++;
-      }
-      // Send last line of line group
-      if(c == (vector_int.size()-1)){
-        int aux = Cubinho[0].size();
-        MPI_Send(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send dimension of line
-        if(aux > 0)
-          MPI_Send(&Cubinho[0].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
-      }else{
-        int aux = Cubinho[aux_n_linha].size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
-        if(aux > 0)
-          MPI_Send(&Cubinho[aux_n_linha].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
-      }
+    //slaves are not sending borders only what belong to them
+    for(int i=1; i<x_size-1; i++){
+      int aux = Cubinho[i].size();
+      MPI_Isend(&aux, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &requestss[i]);
     }
-    */
+
+    MPI_Waitall(x_size-2,requestss, statusess);
+
+    //send lines sequentialy
+    for(int i=1; i<x_size-1; i++){ //send q lines to master
+       // send dimension of line
+       // ERROR??? doesnt let use aux if not declared again?????
+       if(int aux = Cubinho[i].size() != 0) //if line is empty dont send line
+        MPI_Send(&Cubinho[i].front(), aux, MPI_INT, 0, TAG, MPI_COMM_WORLD); // send line
+    }
+    cout << "Slave ending" << endl;
+
   }
   //float end = omp_get_wtime();
   //cout << end-start << endl;
