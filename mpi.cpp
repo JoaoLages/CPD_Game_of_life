@@ -33,7 +33,7 @@ struct Node {
 
 int cube_size; // global variable
 int x_size;
-int me;
+int me, gen;
 
 bool Find( Node** node, int value )
 {
@@ -58,29 +58,67 @@ void Insert( Node** node, int value )
   Insert( &((*node)->right), value );
 }
 
+void print_in_order(Node* p, int a, int b){
+  if(p != NULL){
+    if(p->left) print_in_order(p->left, a, b);
+    cout << a <<" "<<b<<" "<<p->z<<endl;
+    if(p->right) print_in_order(p->right, a, b);
+  }return;
+}
+
+// Program Output
+void printCube(vector<vector<Node*>> &Cube, int my_x){
+  for(int a=1; a<(x_size-1); a++){
+    for(int b=0; b<cube_size; b++){
+      print_in_order(Cube[a][b],a+my_x-1, b);
+    }
+  }
+}
 
 // Count live cells around a cell
 int checkLiveCells(int x, int y, int z, vector<vector<Node*>> &Cube){
   int liveCells = 0;
   int i, aux;
   int cord_vector[3], aux_cord_vector[3];
+  bool checkFlag;
 
   aux_cord_vector[0] = cord_vector[0] = x;
   aux_cord_vector[1] = cord_vector[1] = y;
   aux_cord_vector[2] = cord_vector[2] = z;
+  // 1 2 0
   for(i=0;i<3;i++){
 
     aux = cord_vector[i]-1;
-    if(aux==-1) aux=cube_size-1;
-    aux_cord_vector[i] = aux;
-    if(Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])) // live cell in this position (0/-1)
-    liveCells++;
+    if(aux==-1 and i!=0){
+      checkFlag = true;
+      aux=cube_size-1;
+    }
+    else if(aux==-1 and i==0){
+      checkFlag = false;
+    }else{
+      checkFlag = true;
+    }
+    if(checkFlag){
+      aux_cord_vector[i] = aux;
+      if(Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])) {// live cell in this position (0/-1)
+      liveCells++;}
+    }
 
     aux = cord_vector[i]+1;
-    if(aux==cube_size) aux=0;
-    aux_cord_vector[i] = aux;
-    if(Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])) // live cell in this position (0/-1)
-    liveCells++;
+    if(aux==cube_size and i!=0){
+      checkFlag = true;
+      aux=0;
+    }
+    else if(aux==x_size and i==0){
+      checkFlag = false;
+    }else{
+      checkFlag = true;
+    }
+    if(checkFlag){
+      aux_cord_vector[i] = aux;
+      if(Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])) // live cell in this position (0/-1)
+      liveCells++;
+    }
 
     aux_cord_vector[i] = cord_vector[i];
   }
@@ -141,23 +179,6 @@ void buildToSendCube(Node* p, vector<vector<int>> &toSendCube, int x, int y){
   }return;
 }
 
-void print_in_order(Node* p, int a, int b){
-  if(p != NULL){
-    if(p->left) print_in_order(p->left, a, b);
-    cout << a <<" "<<b<<" "<<p->z<<endl;
-    if(p->right) print_in_order(p->right, a, b);
-  }return;
-}
-
-// Program Output
-void printCube(vector<vector<Node*>> &Cube, int my_x){
-  for(int a=1; a<(x_size-1); a++){
-    for(int b=0; b<cube_size; b++){
-      print_in_order(Cube[a][b], my_x+a-1, b);
-    }
-  }
-}
-
 void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<Node*>> &newCube)
 {
   if(p->left) inorder(p->left, a, b, Cube, newCube);
@@ -165,12 +186,17 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
   int z = p->z;
   int aux_live_cells = checkLiveCells(a, b, z, Cube);
 
+  if(gen==1 and me==3 and a==1 and b==2 and z==0){
+    cout<<"cheguei "<<aux_live_cells<<endl;
+  }
+
   if(aux_live_cells>=2 and aux_live_cells<=4){ // cell lives
     Insert(&newCube[a][b], z);
   }
 
   // Check Neighbours
   int cord_vector[3], aux_cord_vector[3], aux;
+  bool checkFlag;
 
   aux_cord_vector[0] = cord_vector[0] = a;
   aux_cord_vector[1] = cord_vector[1] = b;
@@ -179,22 +205,42 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
   for(int i=0;i<3;i++){
 
     aux = cord_vector[i]-1;
-    if(!(i==0 and aux==0)){ //Dont compute firstline in x
-      if(aux==-1 and i!=0) aux=cube_size-1;
+    if(aux==-1 and i!=0){
+      checkFlag = true;
+      aux=cube_size-1;
+    }
+    else if(aux==-1 and i==0){
+      checkFlag = false;
+    }else{
+      checkFlag = true;
+    }
+    if(checkFlag){
       aux_cord_vector[i] = aux;
       if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
+
         aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
         if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
           Insert(&newCube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2]);
         }
       }
     }
+
+
 
     aux = cord_vector[i]+1;
-    if(!(i==0 and aux==x_size-1)){ //Dont compute lastline in x
-      if(aux==cube_size and i!=0) aux=0;
+    if(aux==cube_size and i!=0){
+      checkFlag = true;
+      aux=0;
+    }
+    else if(aux==x_size and i==0){
+      checkFlag = false;
+    }else{
+      checkFlag = true;
+    }
+    if(checkFlag){
       aux_cord_vector[i] = aux;
       if(!Find(&Cube[aux_cord_vector[0]][aux_cord_vector[1]], aux_cord_vector[2])){ // death cell in this position
+
         aux_live_cells = checkLiveCells(aux_cord_vector[0], aux_cord_vector[1], aux_cord_vector[2], Cube);
 
         if(aux_live_cells>=2 and aux_live_cells<=3){// cell lives
@@ -202,6 +248,7 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
         }
       }
     }
+
 
     aux_cord_vector[i] = cord_vector[i];
 
@@ -384,11 +431,11 @@ int main(int argc, char *argv[]){
     }
     vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
-    for(int p=0;p<number_gen; ++p){
+    for(gen=0;gen<number_gen; ++gen){
       // Reset toSendCube
       vector<vector<int>> toSendCube;
       vector<vector<int>> receivedCube;
-      if(p==(number_gen-1)) // last iteration => send all Cube
+      if(gen==(number_gen-1)) // last iteration => send all Cube
         toSendCube.resize(x_size);
       else //else, send first and lastline only
         toSendCube.resize(2);
@@ -402,7 +449,9 @@ int main(int argc, char *argv[]){
       newCube.resize(x_size);
       for (auto &a: newCube) a.resize(cube_size);
 
+
       // Compute secondline in x
+      /*
       for(int b=0; b<cube_size; ++b){
         Node* z_tree = (Cubinho[1][b]);
         if (z_tree != NULL) inorder(z_tree, 1, b, Cubinho, newCube); //Iterate in binary tree
@@ -414,17 +463,17 @@ int main(int argc, char *argv[]){
           Node* z_tree = (Cubinho[(x_size-2)][b]);
           if (z_tree != NULL) inorder(z_tree, x_size-2, b, Cubinho, newCube); //Iterate in binary tree
         }
-      }
+      }*/
 
       // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
-      for(int a=2; a<(x_size-2); ++a){
+      for(int a=0; a<x_size; ++a){
         for(int b=0; b<cube_size; ++b){
           Node* z_tree = (Cubinho[a][b]);
           if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
         }
       }
 
-      if(p==(number_gen-1)){ // meter newCube todo no toSendCube
+      if(gen==(number_gen-1)){ // meter newCube todo no toSendCube
         for(int a=1; a<(x_size-1); ++a){
           for(int b=0; b<cube_size; ++b){
             Node* z_tree = (newCube[a][b]);
@@ -446,7 +495,7 @@ int main(int argc, char *argv[]){
       // TODO: A mudar para Irecv e Isend
       // Send first and lastline via MPI, if not last iteration
       // Receive second and second last via MPI, if not last iteration
-      if(p!=(number_gen-1)){
+      if(gen!=(number_gen-1)){
         int aux_ldim; // dimension of the line
         int slave_n_send; // number of slave to send
         int slave_n_recv; // number of slave to receive
@@ -487,15 +536,24 @@ int main(int argc, char *argv[]){
 
           /*
           usleep(1000000*me);
-          cout <<me<<endl;
-          for(int m=0; m<receivedCube[c].size(); m++){
+          cout <<me<<endl;*/
+          /*
+          if(gen==0 and me==3)
+          {for(int m=0; m<receivedCube[c].size(); m++){
             cout<<receivedCube[c][m]<<" ";
           }
-          cout << endl;*/
+          cout << endl;}*/
+
         }
       }
 
-      if(p!=(number_gen-1)) joinCubes(newCube, receivedCube); // JOin cubes except in the final iteration
+      if(gen!=(number_gen-1)){
+        for(int j=0; j<cube_size; j++){
+          newCube[0][j] = NULL;
+          newCube[x_size-1][j] = NULL;
+        }
+        joinCubes(newCube, receivedCube); // JOin cubes except in the final iteration}
+      }
       Cubinho = newCube;
       //if(p!=(number_gen-1)){usleep(1000000*me);
       //printCube(Cubinho, infos[2]);}
