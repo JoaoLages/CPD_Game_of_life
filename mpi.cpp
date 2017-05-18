@@ -317,25 +317,24 @@ int main(int argc, char *argv[]){
   ss >> number_gen;
 
   //Master node
-  if(me == 0){
+  if(me == nprocs-1){
 
     Cube = readInputFile(argv[1]);
 
     vector<int> vector_int; //n_linhas to send to slave
-    vector_int.resize(nprocs-1);
+    vector_int.resize(nprocs);
 
-    for(int i = 0; i <nprocs-1;i++)
-      vector_int[i] = cube_size/(nprocs-1);
+    for(int i = 0; i <nprocs;i++)
+      vector_int[i] = cube_size/(nprocs);
 
-    if(cube_size%(nprocs-1) != 0){
-      for(int i=0; i< cube_size%(nprocs-1); i++)
+    if(cube_size%(nprocs) != 0){
+      for(int i=0; i< cube_size%(nprocs); i++)
         vector_int[i]++;
     }
     int aux_n_linha = 0; //linha a mandar
-    // sends to all slaves ????
 
     //send cube to slaves
-    for(int c=0; c<vector_int.size(); c++){
+    for(int c=0; c<vector_int.size()-1; c++){
       vector<int> infos;
       infos.resize(3);
 
@@ -343,24 +342,24 @@ int main(int argc, char *argv[]){
       infos[1]=vector_int[c]; //number of lines to send to slave process
       infos[2]=aux_n_linha;
 
-      MPI_Send(&infos.front(), infos.size(), MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send infos to slave
+      MPI_Send(&infos.front(), infos.size(), MPI_INT, c, TAG, MPI_COMM_WORLD); // send infos to slave
       // Send firstline of line group
       if(c == 0){
         int aux = Cube.back().size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD);
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD);
         if(aux > 0) // send dimension of line
-          MPI_Send(&Cube.back().front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+          MPI_Send(&Cube.back().front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
       }else{
         int aux = Cube[aux_n_linha-1].size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
         if(aux > 0)
-          MPI_Send(&Cube[aux_n_linha-1].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+          MPI_Send(&Cube[aux_n_linha-1].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
       }
       for(int q=0; q<vector_int[c]; q++){ //send q lines to slave
         int aux = Cube[aux_n_linha].size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
         if(aux > 0)
-          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
 
         aux_n_linha++;
       }
@@ -372,19 +371,129 @@ int main(int argc, char *argv[]){
           MPI_Send(&Cube[0].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
       }else{
         int aux = Cube[aux_n_linha].size();
-        MPI_Send(&aux, 1, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send dimension of line
+        MPI_Send(&aux, 1, MPI_INT, c, TAG, MPI_COMM_WORLD); // send dimension of line
         if(aux > 0)
-          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c+1, TAG, MPI_COMM_WORLD); // send line
+          MPI_Send(&Cube[aux_n_linha].front(), aux, MPI_INT, c, TAG, MPI_COMM_WORLD); // send line
       }
     }
 
+    // Behave as a slave now
+    //First recv from master
+    vector<int> infos;
+    infos.resize(3);
+    infos[0]=cube_size;
+    infos[1]=vector_int[vector_int.size()-1]; //number of lines to send to slave process
+    infos[2]=aux_n_linha;
+
+    vector<vector<int>>::const_iterator first = Cube.begin() + aux_n_linha-1;
+    vector<vector<int>>::const_iterator end = Cube.end();
+    vector<vector<int>> subCube(first, end);
+    subCube.resize(subCube.size()+1);
+    subCube[subCube.size()-1] = Cube[0]; //add lastline to subCube
+
+    x_size=(infos[1]+2);
+    cube_size = infos[0];
+
+    vector<vector<Node*>> Cubinho = cube_dismember(subCube);
+
+    for(gen=0;gen<number_gen; ++gen){
+      // Reset toSendCube
+      vector<vector<int>> toSendCube;
+      vector<vector<int>> receivedCube;
+      if(gen==(number_gen-1)) // last iteration => send all Cube
+        toSendCube.resize(x_size);
+      else //else, send first and lastline only
+        toSendCube.resize(2);
+
+      receivedCube.resize(2);
+
+      vector<vector<Node*>> newCube;
+      newCube.resize(x_size);
+      for (auto &a: newCube) a.resize(cube_size);
+
+      // Correr Cubinho entre 2 e size-2 -> nao mexe nas  2 primeiras e  2 ultimas linhas
+      for(int a=0; a<x_size; ++a){
+        for(int b=0; b<cube_size; ++b){
+          Node* z_tree = (Cubinho[a][b]);
+          if (z_tree != NULL) inorder(z_tree, a, b, Cubinho, newCube); //Iterate in binary tree
+        }
+      }
+
+      if(gen==(number_gen-1)){ // meter newCube todo no toSendCube
+        for(int a=1; a<(x_size-1); ++a){
+          for(int b=0; b<cube_size; ++b){
+            Node* z_tree = (newCube[a][b]);
+            if (z_tree != NULL) buildToSendCube(z_tree, toSendCube, a, b);
+          }
+        }
+      }else{ // meter apenas 2 linhas do Cubo
+        for(int b=0; b<cube_size; ++b){ //meter segunda linha
+          Node* z_tree = (newCube[1][b]);
+          if (z_tree != NULL) buildToSendCube(z_tree, toSendCube, 0, b);
+        }
+        for(int b=0; b<cube_size; ++b){ //meter penultima linha
+          Node* z_tree = (newCube[x_size-2][b]);
+          if (z_tree != NULL) buildToSendCube(z_tree, toSendCube, 1, b);
+        }
+      }
+
+      if(gen!=(number_gen-1)){
+        int aux_ldim; // dimension of the line
+        int slave_n_send; // number of slave to send
+        int slave_n_recv; // number of slave to receive
+        for(int c=0; c<2; ++c){
+          if(c==0){ // send to previous
+            slave_n_send = me - 1;
+            if(slave_n_send == -1) slave_n_send = nprocs-1;
+            slave_n_recv = me + 1;
+            if(slave_n_recv == nprocs) slave_n_recv = 0;
+          }else{ // send to next
+            slave_n_recv = me - 1;
+            if(slave_n_recv == -1) slave_n_recv = nprocs-1;
+            slave_n_send = me + 1;
+            if(slave_n_send == nprocs) slave_n_send = 0;
+          }
+
+          // correr para cada cubo
+
+          MPI_Request requests[2];
+          MPI_Status statuses[2];
+
+          int aux = toSendCube[c].size();
+
+          MPI_Irecv(&aux_ldim, 1, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive dimension
+          MPI_Isend(&aux, 1, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send dimension of line
+
+          MPI_Waitall(2,requests, statuses);
+
+          receivedCube[c].resize(aux_ldim);
+          if(aux_ldim > 0)
+            MPI_Irecv(&receivedCube[c].front(), aux_ldim, MPI_INT, slave_n_recv, TAG, MPI_COMM_WORLD, &requests[1]); // receive line
+          if(aux > 0)
+            MPI_Isend(&toSendCube[c].front(), aux, MPI_INT, slave_n_send, TAG, MPI_COMM_WORLD, &requests[0]); // send line
+
+          MPI_Waitall(2,requests, statuses);
+
+        }
+        for(int j=0; j<cube_size; j++){
+          newCube[0][j] = NULL;
+          newCube[x_size-1][j] = NULL;
+        }
+        joinCubes(newCube, receivedCube); // JOin cubes except in the final iteration
+      }
+      Cubinho = newCube;
+    }
+
+      int flag_print; // just a flag, no need to initialize
+      MPI_Recv(&flag_print, 1, MPI_INT, me-1, TAG, MPI_COMM_WORLD, &status); // receive from previous
+      printCube(Cubinho, infos[2]); // can print now
 
   }else{ // Slave code
 
     //First recv from master
     vector<int> infos;
     infos.resize(3);
-    MPI_Recv(&infos.front(), infos.size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+    MPI_Recv(&infos.front(), infos.size(), MPI_INT, nprocs-1, TAG, MPI_COMM_WORLD, &status);
 
     Cube.resize(infos[1]+2); //infos vai ter cube_size, n_lines e my_x por esta ordem
 
@@ -393,12 +502,12 @@ int main(int argc, char *argv[]){
 
     int aux_ldim; // dimension of the line
     for(int i=0; i<(infos[1]+2); i++){
-      MPI_Recv(&aux_ldim, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      MPI_Recv(&aux_ldim, 1, MPI_INT, nprocs-1, TAG, MPI_COMM_WORLD, &status);
       Cube[i].resize(aux_ldim);
       if(aux_ldim==0)
         continue;
       // redimension line
-      MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
+      MPI_Recv(&Cube[i].front(), Cube[i].size(), MPI_INT, nprocs-1, TAG, MPI_COMM_WORLD, &status);
     }
     vector<vector<Node*>> Cubinho = cube_dismember(Cube);
 
@@ -450,14 +559,14 @@ int main(int argc, char *argv[]){
         for(int c=0; c<2; ++c){
           if(c==0){ // send to previous
             slave_n_send = me - 1;
-            if(slave_n_send == 0) slave_n_send = nprocs-1;
+            if(slave_n_send == -1) slave_n_send = nprocs-1;
             slave_n_recv = me + 1;
-            if(slave_n_recv == nprocs) slave_n_recv = 1;
+            if(slave_n_recv == nprocs) slave_n_recv = 0;
           }else{ // send to next
             slave_n_recv = me - 1;
-            if(slave_n_recv == 0) slave_n_recv = nprocs-1;
+            if(slave_n_recv == -1) slave_n_recv = nprocs-1;
             slave_n_send = me + 1;
-            if(slave_n_send == nprocs) slave_n_send = 1;
+            if(slave_n_send == nprocs) slave_n_send = 0;
           }
 
           // correr para cada cubo
@@ -492,11 +601,11 @@ int main(int argc, char *argv[]){
     }
 
     // Send and receive flag to print
-    if(me!=1){
+    if(me!=0){
       int flag_print; // just a flag, no need to initialize
       MPI_Recv(&flag_print, 1, MPI_INT, me-1, TAG, MPI_COMM_WORLD, &status); // receive from previous
       printCube(Cubinho, infos[2]); // can print now
-      if(me!=nprocs-1) MPI_Send(&flag_print, 1, MPI_INT, me+1, TAG, MPI_COMM_WORLD); // send to next
+      MPI_Send(&flag_print, 1, MPI_INT, me+1, TAG, MPI_COMM_WORLD); // send to next
     }else{ //slave 1, no need to receive flag
       int flag_print; // just a flag, no need to initialize
       printCube(Cubinho, infos[2]);
