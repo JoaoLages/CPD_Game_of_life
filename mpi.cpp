@@ -325,11 +325,11 @@ int main(int argc, char *argv[]){
     vector_int.resize(nprocs-1);
 
     for(int i = 0; i <nprocs-1;i++)
-    vector_int[i] = cube_size/nprocs;
+      vector_int[i] = cube_size/(nprocs-1);
 
     if(cube_size%(nprocs-1) != 0){
       for(int i=0; i< cube_size%(nprocs-1); i++)
-      vector_int[i]++;
+        vector_int[i]++;
     }
     int aux_n_linha = 0; //linha a mandar
     // sends to all slaves ????
