@@ -3,10 +3,7 @@
 #include <string>
 #include <sstream> // stringstream
 #include <fstream>  //files
-#include <set> // set
-#include <unordered_set> // unordered_set
 #include <algorithm>
-#include <mpi.h>
 
 using namespace std; // no need to type 'std::'
 
@@ -194,18 +191,10 @@ void inorder(Node* p, int a, int b, vector<vector<Node*>> &Cube, vector<vector<N
 }
 int main(int argc, char *argv[]){
 
-  //float start = omp_get_wtime();
-
   if( argc != 3 ){ // 2 arguments needed
     cout<<"usage: "<< argv[0] << " <filename> <number_gen>" << endl;
     return -1;
   }
-
-  int me, nprocs;
-  MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  MPI_Comm_rank(MPI_COMM_WORLD, &me);
-  printf("Hi from node %d of %d\n", me, nprocs);
 
   // Read from file
   int number_gen;
@@ -234,9 +223,5 @@ int main(int argc, char *argv[]){
   }
   printCube(Cube);
 
-  //float end = omp_get_wtime();
-  //cout << end-start << endl;
-
-  MPI_Finalize();
   return 0;
 }
